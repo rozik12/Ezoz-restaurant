@@ -29,6 +29,8 @@ class Settings:
     db_path: str
     menu_pdf_path: Path
     website_url: str
+    web_port: int | None
+    site_origins: tuple[str, ...]
     instagram: str
     telegram_channel: str
     facebook: str
@@ -60,6 +62,8 @@ class Settings:
             db_path=_str("DB_PATH", "ezoz.db"),
             menu_pdf_path=Path(_str("MENU_PDF_PATH", "assets/ezoz_menu.pdf")),
             website_url=_str("WEBSITE_URL"),
+            web_port=_int("PORT"),
+            site_origins=tuple(o.strip().rstrip("/") for o in _str("SITE_ORIGINS", "*").split(",") if o.strip()),
             instagram=_str("INSTAGRAM_URL"),
             telegram_channel=_str("TELEGRAM_CHANNEL_URL"),
             facebook=_str("FACEBOOK_URL"),

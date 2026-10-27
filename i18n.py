@@ -109,7 +109,7 @@ STR: dict[str, dict[str, str]] = {
         # staff lead notification is always in ADMIN_LANG
         "lead_title": "🔔 <b>New booking request #{id}</b>",
         "lead_guests": "👥 About {guests} guests · menu: {tier}", "lead_estimate": "💰 Estimate: {total}",
-        "lead_tier_none": "not chosen", "lead_lang": "🌐 Client language: {code}",
+        "lead_tier_none": "not chosen", "lead_lang": "🌐 Client language: {code}", "lead_source_site": "🌐 Source: website booking form",
     },
     # ------------------------------------------------------------------ Russian
     "ru": {
@@ -200,7 +200,7 @@ STR: dict[str, dict[str, str]] = {
         "bc_done": "📣 <b>Рассылка завершена</b>\n{line}\n✅ Доставлено: {sent}\n🚫 Заблокировали бота: {blocked}\n⚠️ Ошибок: {failed}",
         "lead_title": "🔔 <b>Новая заявка на бронь №{id}</b>",
         "lead_guests": "👥 Около {guests} гостей · меню: {tier}", "lead_estimate": "💰 Расчёт: {total}",
-        "lead_tier_none": "не выбрано", "lead_lang": "🌐 Язык клиента: {code}",
+        "lead_tier_none": "не выбрано", "lead_lang": "🌐 Язык клиента: {code}", "lead_source_site": "🌐 Источник: форма бронирования на сайте",
     },
     # ------------------------------------------------------------------ Uzbek (Latin)
     "uz": {
@@ -291,7 +291,7 @@ STR: dict[str, dict[str, str]] = {
         "bc_done": "📣 <b>Yuborish yakunlandi</b>\n{line}\n✅ Yetkazildi: {sent}\n🚫 Botni bloklaganlar: {blocked}\n⚠️ Xatolar: {failed}",
         "lead_title": "🔔 <b>Yangi band qilish arizasi №{id}</b>",
         "lead_guests": "👥 Taxminan {guests} mehmon · menyu: {tier}", "lead_estimate": "💰 Hisob: {total}",
-        "lead_tier_none": "tanlanmagan", "lead_lang": "🌐 Mijoz tili: {code}",
+        "lead_tier_none": "tanlanmagan", "lead_lang": "🌐 Mijoz tili: {code}", "lead_source_site": "🌐 Manba: saytdagi band qilish shakli",
     },
 }
 

@@ -150,6 +150,8 @@ async def recent_leads(call: CallbackQuery, db: Database, lang: str) -> None:
         extra = f" · ~{r['guests']}" if r["guests"] else ""
         tier = f" · {t(lang, 'tier_' + r['tier'])}" if r["tier"] else ""
         est = f" · {money(lang, r['estimate_uzs'])}" if r["estimate_uzs"] else ""
-        out.append(f"<b>#{r['id']}</b> 📅 {when}{extra}{tier}{est}\n"
-                   f"<a href=\"tg://user?id={r['user_id']}\">{html.escape(r['name'] or t(lang, 'guest'))}</a> · {html.escape(r['phone'])}")
+        who = html.escape(r["name"] or t(lang, "guest"))
+        if r["user_id"] > 0:                      # website leads have user_id 0 and no Telegram profile
+            who = f"<a href=\"tg://user?id={r['user_id']}\">{who}</a>"
+        out.append(f"<b>#{r['id']}</b> 📅 {when}{extra}{tier}{est}\n{who} · {html.escape(r['phone'])}")
     await show(call, t(lang, "leads_title") + "\n\n".join(out), kb.back_home(lang))
