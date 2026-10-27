@@ -13,6 +13,8 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 
 from config import settings
 from db import Database
+from i18n import norm
+from bot_profile import setup_bot_profile
 from handlers import admin, common, guest, owner
 
 
@@ -26,8 +28,12 @@ class UserTrackerMiddleware(BaseMiddleware):
                        event: TelegramObject, data: dict[str, Any]) -> Any:
         user = getattr(event, "from_user", None)
         chat = event.chat if isinstance(event, Message) else (event.message.chat if isinstance(event, CallbackQuery) and event.message else None)
+        lang = None
         if user and not user.is_bot and chat is not None and chat.type == ChatType.PRIVATE:
             await self.db.upsert_user(user.id, user.username, user.full_name)
+            lang = await self.db.get_lang(user.id)
+        data["lang"] = norm(lang)              # handlers receive `lang` by name
+        data["lang_set"] = lang is not None    # False until the user has picked a language
         return await handler(event, data)
 
 
@@ -49,6 +55,7 @@ async def main() -> None:
 
     try:
         await bot.delete_webhook(drop_pending_updates=False)
+        await setup_bot_profile(bot)
         logging.info("Bot started as @%s", (await bot.me()).username)
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:

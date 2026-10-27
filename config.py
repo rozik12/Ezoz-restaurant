@@ -29,6 +29,13 @@ class Settings:
     db_path: str
     menu_pdf_path: Path
     website_url: str
+    instagram: str
+    telegram_channel: str
+    facebook: str
+    address: str
+    phone: str
+    admin_lang: str
+    logo_path: Path
     # Meta Graph API
     graph_version: str
     ig_user_id: str
@@ -53,6 +60,13 @@ class Settings:
             db_path=_str("DB_PATH", "ezoz.db"),
             menu_pdf_path=Path(_str("MENU_PDF_PATH", "assets/ezoz_menu.pdf")),
             website_url=_str("WEBSITE_URL"),
+            instagram=_str("INSTAGRAM_URL"),
+            telegram_channel=_str("TELEGRAM_CHANNEL_URL"),
+            facebook=_str("FACEBOOK_URL"),
+            address=_str("ADDRESS"),
+            phone=_str("PHONE"),
+            admin_lang=_str("ADMIN_LANG", "ru"),
+            logo_path=Path(_str("LOGO_PATH", "assets/logo.jpg")),
             graph_version=_str("GRAPH_VERSION", "v21.0"),
             ig_user_id=_str("IG_USER_ID"),
             meta_access_token=_str("META_ACCESS_TOKEN"),

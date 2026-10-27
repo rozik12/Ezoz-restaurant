@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS users (
     full_name  TEXT,
     first_seen TEXT NOT NULL,
     last_seen  TEXT NOT NULL,
-    blocked    INTEGER NOT NULL DEFAULT 0
+    blocked    INTEGER NOT NULL DEFAULT 0,
+    lang       TEXT
 );
 CREATE TABLE IF NOT EXISTS admins (
     user_id  INTEGER PRIMARY KEY,
@@ -32,7 +33,8 @@ CREATE TABLE IF NOT EXISTS leads (
     guests       INTEGER,
     tier         TEXT,
     estimate_uzs INTEGER,
-    created_at   TEXT NOT NULL
+    created_at   TEXT NOT NULL,
+    lang         TEXT
 );
 CREATE TABLE IF NOT EXISTS events (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +60,17 @@ class Database:
         self._db = await aiosqlite.connect(self.path)
         self._db.row_factory = aiosqlite.Row
         await self._db.executescript(SCHEMA)
+        async with self._db.execute("PRAGMA table_info(users)") as cur:       # migrate databases created before languages
+            cols = {r["name"] for r in await cur.fetchall()}
+        if "lang" not in cols:
+            await self._db.execute("ALTER TABLE users ADD COLUMN lang TEXT")
+        if "lang" not in {c for c in await self._lead_cols()}:
+            await self._db.execute("ALTER TABLE leads ADD COLUMN lang TEXT")
         await self._db.commit()
+
+    async def _lead_cols(self) -> list[str]:
+        async with self.db.execute("PRAGMA table_info(leads)") as cur:
+            return [r["name"] for r in await cur.fetchall()]
 
     @staticmethod
     def _usable_path(path: str) -> str:
@@ -101,6 +113,15 @@ class Database:
                  last_seen=excluded.last_seen, blocked=0""",
             (user_id, username, full_name, now, now),
         )
+        await self.db.commit()
+
+    async def get_lang(self, user_id: int) -> str | None:
+        async with self.db.execute("SELECT lang FROM users WHERE user_id=?", (user_id,)) as cur:
+            row = await cur.fetchone()
+            return row["lang"] if row else None
+
+    async def set_lang(self, user_id: int, lang: str) -> None:
+        await self.db.execute("UPDATE users SET lang=? WHERE user_id=?", (lang, user_id))
         await self.db.commit()
 
     async def broadcast_targets(self) -> list[int]:
@@ -146,8 +167,8 @@ class Database:
     # ---------- leads & events ----------
     async def add_lead(self, **f: Any) -> int:
         cur = await self.db.execute(
-            """INSERT INTO leads(user_id,name,username,phone,event_date,guests,tier,estimate_uzs,created_at)
-               VALUES(:user_id,:name,:username,:phone,:event_date,:guests,:tier,:estimate_uzs,:created_at)""",
+            """INSERT INTO leads(user_id,name,username,phone,event_date,guests,tier,estimate_uzs,created_at,lang)
+               VALUES(:user_id,:name,:username,:phone,:event_date,:guests,:tier,:estimate_uzs,:created_at,:lang)""",
             {**f, "created_at": _now().isoformat()},
         )
         await self.db.commit()

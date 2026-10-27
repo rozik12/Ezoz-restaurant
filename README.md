@@ -1,5 +1,9 @@
 # E'zoz Tashkent bot (aiogram 3)
 
+Languages: English, Russian and Uzbek (Latin). Every new user first picks a language; it can be changed any time with the 🌐 button or /language. All texts live in `i18n.py`.
+
+The main menu is sent with the E'zoz logo (`assets/logo.jpg`).
+
 Roles are resolved from the sender's Telegram ID on every update:
 
 | Role | Who | Features |
@@ -22,6 +26,8 @@ To get `ADMIN_CHAT_ID`: add the bot to the working group, send any message, and 
 ## Layout
 ```
 main.py            dispatcher, middleware, router order
+i18n.py            all texts (en / ru / uz), date and currency formats
+bot_profile.py     bot description and command menus in three languages
 config.py          settings from .env, hardcoded OWNER_ID
 db.py              SQLite: users, admins, leads, events
 roles.py           Role enum, HasRole filter
