@@ -1,0 +1,4 @@
+.env
+*.db
+media_tmp/
+__pycache__/
