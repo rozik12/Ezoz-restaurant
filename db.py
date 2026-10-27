@@ -1,7 +1,9 @@
 """SQLite storage: users, administrators, leads and funnel events."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 import aiosqlite
@@ -52,10 +54,27 @@ class Database:
         self._db: aiosqlite.Connection | None = None
 
     async def connect(self) -> None:
+        self.path = self._usable_path(self.path)
         self._db = await aiosqlite.connect(self.path)
         self._db.row_factory = aiosqlite.Row
         await self._db.executescript(SCHEMA)
         await self._db.commit()
+
+    @staticmethod
+    def _usable_path(path: str) -> str:
+        """Create the database folder (for example the Railway volume at /data). If it cannot be written,
+        fall back to a local file so the bot still starts; data is then lost on redeploy, so it is logged loudly."""
+        folder = Path(path).parent
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            probe = folder / ".write_test"
+            probe.write_text("ok")
+            probe.unlink()
+            return path
+        except OSError as e:
+            fallback = "ezoz.db"
+            logging.getLogger(__name__).error("Cannot write to %s (%s). Using %s: DATA WILL NOT SURVIVE REDEPLOYS.", folder, e, fallback)
+            return fallback
 
     async def close(self) -> None:
         if self._db:
