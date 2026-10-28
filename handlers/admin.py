@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import logging
+import re
 import uuid
 
 from aiogram import Bot, F, Router
@@ -16,8 +17,9 @@ from db import Database
 from handlers.common import show, show_main_menu
 from i18n import fmt_date_short, money, t
 from roles import HasRole, Role
+from services import pricing
 from services.social import IG_CAPTION_LIMIT, PLATFORMS, VIDEO_ONLY, LocalMedia, publish_all
-from states import PostStates
+from states import PostStates, PriceStates
 
 log = logging.getLogger(__name__)
 
@@ -155,3 +157,55 @@ async def recent_leads(call: CallbackQuery, db: Database, lang: str) -> None:
             who = f"<a href=\"tg://user?id={r['user_id']}\">{who}</a>"
         out.append(f"<b>#{r['id']}</b> 📅 {when}{extra}{tier}{est}\n{who} · {html.escape(r['phone'])}")
     await show(call, t(lang, "leads_title") + "\n\n".join(out), kb.back_home(lang))
+
+
+# =========================== prices ===========================
+async def _prices_screen(event, lang: str, note: str = "") -> None:
+    await show(event, note + t(lang, "prices_title"), kb.prices_kb(lang))
+
+
+@router.callback_query(F.data == "adm:prices")
+async def prices(call: CallbackQuery, state: FSMContext, lang: str) -> None:
+    await state.clear()
+    await _prices_screen(call, lang)
+
+
+@router.callback_query(F.data.startswith("price:"))
+async def price_pick(call: CallbackQuery, state: FSMContext, lang: str) -> None:
+    _, group, key = call.data.split(":")
+    if group not in pricing.GROUPS or key not in pricing.GROUPS[group]:
+        await call.answer()
+        return
+    await state.set_state(PriceStates.value)
+    await state.update_data(group=group, key=key)
+    await show(call, t(lang, "price_prompt", icon=kb.PRICE_ICON[group], name=kb.price_label(lang, group, key),
+                       cur=money(lang, pricing.GROUPS[group][key])), kb.price_cancel_kb(lang))
+
+
+@router.message(PriceStates.value, F.text)
+async def price_set(message: Message, state: FSMContext, bot: Bot, db: Database, lang: str) -> None:
+    raw = re.sub(r"[\s,._]", "", message.text)           # accept "400 000", "400,000" and "400.000"
+    if not raw.isdigit():
+        await message.answer(t(lang, "price_bad"))
+        return
+    data = await state.get_data()
+    group, key = data["group"], data["key"]
+    lo, hi = pricing.LIMITS[group]
+    value = int(raw)
+    if not lo <= value <= hi:
+        await message.answer(t(lang, "price_range", lo=money(lang, lo), hi=money(lang, hi)))
+        return
+    old = await pricing.save_price(db, group, key, value)
+    await state.clear()
+    log.info("Price %s:%s changed %s -> %s by %s", group, key, old, value, message.from_user.id)
+    if message.from_user.id != OWNER_ID:                  # the owner always sees who changed what
+        owner_lang = await db.get_lang(OWNER_ID) or settings.admin_lang
+        who = f"@{message.from_user.username}" if message.from_user.username else message.from_user.full_name
+        try:
+            await bot.send_message(OWNER_ID, t(owner_lang, "price_audit", who=html.escape(who),
+                                               name=kb.price_label(owner_lang, group, key), old=money(owner_lang, old),
+                                               new=money(owner_lang, value)))
+        except Exception:
+            log.warning("Could not notify the owner about a price change")
+    await _prices_screen(message, lang, t(lang, "price_saved", name=kb.price_label(lang, group, key),
+                                          old=money(lang, old), new=money(lang, value)))

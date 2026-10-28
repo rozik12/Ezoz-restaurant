@@ -24,3 +24,7 @@ class OwnerStates(StatesGroup):         # owner: admin management and broadcast
     add_admin = State()
     broadcast = State()
     broadcast_confirm = State()
+
+
+class PriceStates(StatesGroup):         # admin: change a price
+    value = State()

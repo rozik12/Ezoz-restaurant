@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS events (
     ts      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_kind ON events(kind);
+CREATE TABLE IF NOT EXISTS kv (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -101,6 +105,16 @@ class Database:
         async with self.db.execute(sql, args) as cur:
             row = await cur.fetchone()
             return row[0] if row else 0
+
+    # ---------- key/value settings (prices) ----------
+    async def get_kv(self, key: str) -> str | None:
+        async with self.db.execute("SELECT value FROM kv WHERE key=?", (key,)) as cur:
+            row = await cur.fetchone()
+            return row["value"] if row else None
+
+    async def set_kv(self, key: str, value: str) -> None:
+        await self.db.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+        await self.db.commit()
 
     # ---------- users ----------
     async def upsert_user(self, user_id: int, username: str | None, full_name: str) -> None:

@@ -15,6 +15,7 @@ from config import settings
 from db import Database
 from i18n import norm
 from bot_profile import setup_bot_profile
+from services.pricing import load_prices
 from web import start_web
 from handlers import admin, common, guest, owner
 
@@ -42,6 +43,7 @@ async def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     db = Database(settings.db_path)
     await db.connect()
+    await load_prices(db)                        # prices changed by administrators survive restarts
 
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     # MemoryStorage loses FSM state on restart. For production use RedisStorage (aiogram.fsm.storage.redis).

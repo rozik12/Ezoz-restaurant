@@ -6,7 +6,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardBu
 from config import settings
 from i18n import LANG_BUTTON, LANGS, money, t
 from roles import Role
-from services.pricing import ADDON_UZS, HALL_UZS_KEYS, PER_GUEST_UZS
+from services.pricing import ADDON_UZS, GROUPS, HALL_FEE_UZS, HALL_UZS_KEYS, PER_GUEST_UZS
 from services.social import PLATFORMS, VIDEO_ONLY
 
 Row = list[tuple[str, str]]
@@ -31,12 +31,13 @@ def main_menu(role: Role, lang: str) -> InlineKeyboardMarkup:
     if role is Role.OWNER:
         rows = [[(t(lang, "b_stats"), "own:stats"), (t(lang, "b_admins"), "own:admins")],
                 [(t(lang, "b_broadcast"), "own:broadcast"), (t(lang, "b_post"), "adm:post")],
-                [(t(lang, "b_leads"), "adm:leads"), (t(lang, "b_guest_menu"), "menu:guest")],
-                [(t(lang, "b_lang"), "menu:lang")]]
+                [(t(lang, "b_leads"), "adm:leads"), (t(lang, "b_prices"), "adm:prices")],
+                [(t(lang, "b_guest_menu"), "menu:guest"), (t(lang, "b_lang"), "menu:lang")]]
         return _build(rows)
     if role is Role.ADMIN:
         rows = [[(t(lang, "b_post"), "adm:post"), (t(lang, "b_leads"), "adm:leads")],
-                [(t(lang, "b_guest_menu"), "menu:guest"), (t(lang, "b_lang"), "menu:lang")]]
+                [(t(lang, "b_prices"), "adm:prices"), (t(lang, "b_guest_menu"), "menu:guest")],
+                [(t(lang, "b_lang"), "menu:lang")]]
         return _build(rows)
     return guest_menu(lang)
 
@@ -138,3 +139,25 @@ def admins_kb(lang: str, admins: list[tuple[int, str]]) -> InlineKeyboardMarkup:
 
 def broadcast_confirm_kb(lang: str) -> InlineKeyboardMarkup:
     return _build([[(t(lang, "b_send_all"), "own:bc_go")], [(t(lang, "b_cancel"), "menu:home")]])
+
+
+# ---------------- prices (admin) ----------------
+PRICE_ICON = {"pg": "🍽", "hf": "🏛", "ad": "✨"}
+
+
+def price_label(lang: str, group: str, key: str) -> str:
+    """Translated name of one price line, e.g. 'Premium' or 'Summer Terrace'."""
+    return t(lang, {"pg": "tier_", "hf": "hall_", "ad": "addon_"}[group] + key)
+
+
+def prices_kb(lang: str) -> InlineKeyboardMarkup:
+    rows: list[Row] = []
+    for group in ("pg", "hf", "ad"):
+        order = HALL_UZS_KEYS if group == "hf" else tuple(GROUPS[group])
+        for key in order:
+            rows.append([(f"{PRICE_ICON[group]} {price_label(lang, group, key)} · {money(lang, GROUPS[group][key])}", f"price:{group}:{key}")])
+    return _build(rows + [home_row(lang)])
+
+
+def price_cancel_kb(lang: str) -> InlineKeyboardMarkup:
+    return _build([[(t(lang, "b_back"), "adm:prices")]])

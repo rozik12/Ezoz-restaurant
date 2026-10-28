@@ -29,10 +29,10 @@ def _cors(request: web.Request) -> dict[str, str]:
     origin = request.headers.get("Origin", "").rstrip("/")
     allowed = settings.site_origins
     if "*" in allowed:
-        return {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS",
+        return {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type"}
     if origin in allowed:
-        return {"Access-Control-Allow-Origin": origin, "Vary": "Origin", "Access-Control-Allow-Methods": "POST, OPTIONS",
+        return {"Access-Control-Allow-Origin": origin, "Vary": "Origin", "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type"}
     return {}
 
@@ -60,6 +60,13 @@ async def options(request: web.Request) -> web.Response:
 
 async def health(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
+
+
+async def get_prices(request: web.Request) -> web.Response:
+    """Current banquet prices, so the website always shows what the administrators set in the bot."""
+    resp = _json(request, {"ok": True, **pricing.snapshot()})
+    resp.headers["Cache-Control"] = "public, max-age=30"
+    return resp
 
 
 async def post_lead(request: web.Request) -> web.Response:
@@ -117,6 +124,8 @@ def create_app(bot: Bot, db: Database) -> web.Application:
     app["bot"], app["db"] = bot, db
     app.router.add_get("/", health)
     app.router.add_get("/health", health)
+    app.router.add_get("/api/prices", get_prices)
+    app.router.add_route("OPTIONS", "/api/prices", options)
     app.router.add_post("/api/lead", post_lead)
     app.router.add_route("OPTIONS", "/api/lead", options)
     return app

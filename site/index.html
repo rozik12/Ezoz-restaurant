@@ -1583,6 +1583,20 @@ document.addEventListener('click', e => {
   try { history.replaceState(null, '', '#' + id); } catch (err) { }
 });
 
+/* ============ live prices: the administrators change them in the Telegram bot ============ */
+async function loadPrices() {
+  if (!CFG.leadApi) return;
+  try {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 6000);
+    const res = await fetch(CFG.leadApi.replace('/api/lead', '/api/prices'), { signal: ctl.signal });
+    clearTimeout(to);
+    const d = await res.json();
+    if (!d.ok) return;
+    for (const g of ['perGuest', 'hallFee', 'addons']) for (const [k, v] of Object.entries(d[g] || {})) if (k in CFG[g] && Number.isFinite(v) && v >= 0) CFG[g][k] = v;
+    renderCalc();
+  } catch (e) { /* keep the built-in prices when the bot is unreachable */ }
+}
+
 /* ============ start ============ */
 (function init() {
   let l = null;
@@ -1591,6 +1605,7 @@ document.addEventListener('click', e => {
   $('#year').textContent = new Date().getFullYear();
   bokeh($('#heroCanvas'), { count: 44, speed: 1, fill: true });
   setLang(l, false);
+  loadPrices();
 })();
 
 </script>
