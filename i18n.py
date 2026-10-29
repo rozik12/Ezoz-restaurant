@@ -20,7 +20,7 @@ S: dict[str, tuple[str, str, str]] = {
     "choose_lang": ("🌐 Выберите язык / Tilni tanlang / Choose your language", "", ""),
     "lang_set": ("✅ Язык: русский", "✅ Til: o'zbekcha", "✅ Language: English"),
     "welcome": (
-        "👋 <b>Привет! Я OmniStudent</b>, академический помощник для студентов.\n\n"
+        "👋 <b>Привет! Я Uni Prof</b>, академический помощник для студентов.\n\n"
         "✍️ пишу курсовые, рефераты, эссе и планы работ\n"
         "🧮 решаю задачи и пишу код с пошаговым объяснением\n"
         "📝 редактирую, делаю рерайт и перевожу научные тексты\n"
@@ -28,7 +28,7 @@ S: dict[str, tuple[str, str, str]] = {
         "Выберите режим в меню или просто напишите вопрос. Файлы .txt, .pdf и .docx тоже читаю.\n"
         "Бесплатных действий для начала: <b>{free}</b>, дальше оплата из кошелька «💰» в ⭐.\n"
         "Нужна помощь по боту? Кнопка «🆘 Поддержка».",
-        "👋 <b>Salom! Men OmniStudent</b>man, talabalar uchun akademik yordamchi.\n\n"
+        "👋 <b>Salom! Men Uni Prof</b>man, talabalar uchun akademik yordamchi.\n\n"
         "✍️ kurs ishi, referat, esse va ish rejalarini yozaman\n"
         "🧮 masalalarni yechaman va kodni bosqichma-bosqich tushuntirib yozaman\n"
         "📝 ilmiy matnlarni tahrirlayman, qayta yozaman va tarjima qilaman\n"
@@ -36,7 +36,7 @@ S: dict[str, tuple[str, str, str]] = {
         "Menyudan rejimni tanlang yoki shunchaki savol yozing. .txt, .pdf va .docx fayllarni ham o'qiyman.\n"
         "Boshlash uchun bepul harakatlar: <b>{free}</b>, keyin «💰» hamyonidan ⭐ bilan to'lanadi.\n"
         "Bot bo'yicha yordam kerakmi? «🆘 Yordam xizmati» tugmasi.",
-        "👋 <b>Hi! I'm OmniStudent</b>, an academic assistant for students.\n\n"
+        "👋 <b>Hi! I'm Uni Prof</b>, an academic assistant for students.\n\n"
         "✍️ I write term papers, reports, essays and outlines\n"
         "🧮 I solve problems and write code with step-by-step explanations\n"
         "📝 I edit, rewrite and translate academic texts\n"

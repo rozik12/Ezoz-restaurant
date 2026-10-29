@@ -1,4 +1,4 @@
-# OmniStudent bot
+# Uni Prof bot
 
 Academic assistant for students in Telegram (Claude API): coursework and essays, solving problems and code, editing and
 translation, study cheat sheets and the "Tough professor" exam simulator. Reads .txt, .md, .pdf and .docx files.

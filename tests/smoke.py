@@ -91,7 +91,7 @@ async def body(s, db):
     U = 100
     r = await feed(msg(U, "/start")); assert "inline_keyboard" in r[0][1]["reply_markup"] and len(r[0][1]["reply_markup"]["inline_keyboard"]) == 3
     print("start asks language:", texts(r)[0][:40])
-    r = await feed(cb(U, "lang:ru")); welcome = [x for x in texts(r) if "OmniStudent" in x]; assert welcome and len(r[-1][1]["reply_markup"]["keyboard"]) == 6
+    r = await feed(cb(U, "lang:ru")); welcome = [x for x in texts(r) if "Uni Prof" in x]; assert welcome and len(r[-1][1]["reply_markup"]["keyboard"]) == 6
     print("language ru + welcome ok, menu rows:", len(r[-1][1]["reply_markup"]["keyboard"]))
     guide = [x for x in texts(r) if "Как пользоваться ботом" in x]; assert guide and "{" not in guide[0] and "<b>0</b>" in guide[0] and "50 ⭐" in guide[0]; print("guide sent right after the language choice:", guide[0][:30])
     r = await feed(msg(U, "/guide")); assert "Как пользоваться ботом" in texts(r)[0]
@@ -105,7 +105,7 @@ async def body(s, db):
     print("answer html:", out[0].replace("\n", " | "))
     assert "−50 ⭐ · баланс: 70 ⭐" in out[0], out[0]; assert await db.balance(U) == 70; print("question charged 50, footer shows the balance")
     c = fake.calls[-1]
-    assert "OmniStudent" in c["system"] and "Академический писатель" in c["system"] and "Тариф: подписка" in c["system"], "prompt parts"
+    assert "Uni Prof" in c["system"] and "Академический писатель" in c["system"] and "Тариф: подписка" in c["system"], "prompt parts"
     assert "интерфейса пользователя: русский" in c["system"]
     assert c["max_tokens"] == s.paid_max_tokens and c["messages"][-1]["role"] == "user"
     print("system prompt ok, max_tokens =", c["max_tokens"])
@@ -151,7 +151,7 @@ async def body(s, db):
     r = await feed(msg(V, "🆘 Yordam xizmati")); assert "Yordam xizmati" in texts(r)[0]; print("uz support entry ok")
     await feed(msg(V, "/cancel"))
     await db.credit(V, 500, "admin"); await feed(msg(V, "Salom, kurs ishi kerak")); assert "o'zbekcha" in fake.calls[-1]["system"]; print("uz system hint ok")
-    await feed(msg(W, "/start")); r = await feed(cb(W, "lang:en")); assert any("Hi! I'm OmniStudent" in x for x in texts(r)) and any("How to use the bot" in x for x in texts(r)); print("en welcome + guide ok")
+    await feed(msg(W, "/start")); r = await feed(cb(W, "lang:en")); assert any("Hi! I'm Uni Prof" in x for x in texts(r)) and any("How to use the bot" in x for x in texts(r)); print("en welcome + guide ok")
     r = await feed(msg(W, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("en mode button ok")
     r = await feed(msg(V, "/wallet")); assert "Sizning hamyoningiz" in texts(r)[0] and "Boshqa summa" in str(r[0][1]["reply_markup"]); print("uz wallet text ok")
     r = await feed(cb(V, "stars:how")); howto = texts(r)[0]; assert "Mening yulduzlarim" in howto; print("stars how-to (uz) ok")

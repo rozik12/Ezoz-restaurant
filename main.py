@@ -1,4 +1,4 @@
-"""OmniStudent bot entry point.  Run:  python main.py"""
+"""Uni Prof bot entry point.  Run:  python main.py"""
 from __future__ import annotations
 
 import asyncio
