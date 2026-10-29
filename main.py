@@ -11,7 +11,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
 import admin
-import pay
+import wallet
 import support
 import tools
 from access import Access
@@ -32,7 +32,7 @@ async def setup_profile(bot: Bot) -> None:
         await bot.set_my_short_description(SHORT)
         await bot.set_my_commands([BotCommand(command="start", description="Главное меню"),
                                    BotCommand(command="new", description="Новый диалог"),
-                                   BotCommand(command="subscribe", description="Подписка за Stars"),
+                                   BotCommand(command="wallet", description="Кошелёк / Hamyon / Wallet"),
                                    BotCommand(command="stars", description="Как купить Stars / Stars sotib olish / Buy Stars"),
                                    BotCommand(command="slides", description="Слайды / Slaydlar / Slides"),
                                    BotCommand(command="convert", description="Конвертер / Konvertor / Converter"),
@@ -62,7 +62,7 @@ async def main() -> None:
     dp.include_router(support.router)          # order matters: support dialog and admin tools come before the catch-all handlers
     dp.include_router(admin.router)
     dp.include_router(tools.router)
-    dp.include_router(pay.router)
+    dp.include_router(wallet.router)
     dp.include_router(router)
     try:
         await bot.delete_webhook(drop_pending_updates=False)

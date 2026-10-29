@@ -29,21 +29,25 @@ python tests/smoke.py    # end-to-end check on fake Telegram and fake Claude
   `/admin` opens the panel: statistics (users, new, active, subscribers, requests, languages, tickets), user list and cards,
   subscription grant/revoke, ban/unban, refunds, tickets, broadcast, admin list. Only owners use `/addadmin` and `/rmadmin`.
 
-## Free tools
+## Wallet
 
-* **📊 Slides** (`/slides`): a topic (optionally "12 slides") or a file becomes a ready `.pptx` with speaker notes. No invented sources.
-* **🔁 Converter** (`/convert`): .docx, .pdf, .txt, .md, .pptx convert to each other; photos (.jpg, .png) become PDF.
-  Headings, paragraphs and lists are kept; complex layout is simplified; scanned PDFs without a text layer are not supported.
-* **🕵️ AI check** (`/detect`): an estimate of how machine-like a text reads, with the most generic passages and advice.
-  It is an orientation, not proof; real detectors differ.
+Every action is paid from the user's wallet in Telegram Stars; there are no subscriptions and no daily limits.
+By default each action costs 50 ⭐ (`PRICE_CHAT`, `PRICE_SLIDES`, `PRICE_DETECT`, `PRICE_CONVERT`): a question to the assistant,
+a presentation, an AI check, a file conversion. If an action fails, the Stars are returned automatically.
 
-Daily limits are separate from chat requests (`SLIDES_DAILY`, `DETECT_DAILY`, `CONVERT_DAILY`; subscribers get triple).
+* **Top-up of any amount from 1 ⭐:** preset buttons (`TOPUP_PRESETS`), "Other amount" (any number up to `TOPUP_MAX`), or exactly the missing amount
+  when the balance is short. Paid with a Telegram Stars invoice; `/stars` explains how to buy Stars.
+* **Uzbek cards.** Stars are sold by Telegram, Apple and Google, so a bot cannot make a card work there. Two optional alternatives, hidden until configured:
+  * **Transfer to a card** (any Uzcard / Humo): set `CARD_NUMBER`, `CARD_HOLDER` and `UZS_PER_STAR` (price of one Star in so'm). The user picks the number of Stars,
+    sees the card and the exact sum, pays through Click, Payme, Paynet or a bank app and sends the receipt. Administrators get it with *Credit / Reject* buttons;
+    confirming credits the Stars. A request cannot be confirmed twice.
+  * **Click / Payme inside Telegram:** set `PAYMENT_PROVIDER_TOKEN` (BotFather > the bot > Payments, needs a registered merchant account) and `UZS_PER_STAR`.
+* **Admins:** `/grant ID stars` credits a wallet (negative debits), the user card has quick buttons, `/stats` shows balances, top-ups and spending.
+  `WELCOME_BONUS` gives new users free Stars (0 by default).
 
-## Paying without Telegram Stars (Uzbek cards)
+## Tools
 
-Stars are sold by Telegram, Apple and Google, so a bot cannot make a card work there. Two alternatives are built in; both stay hidden until configured:
-
-* **Transfer to a card** (works with any Uzcard / Humo card): set `CARD_NUMBER`, `CARD_HOLDER` and `PRICE_UZS`. The user sees the card and the amount,
-  pays through Click, Payme, Paynet or a bank app, and sends the receipt; every administrator gets it with *Confirm / Reject* buttons, and confirming
-  activates the subscription and messages the user. A request cannot be confirmed twice.
-* **Click / Payme inside Telegram:** set `PAYMENT_PROVIDER_TOKEN` (BotFather > the bot > Payments, needs a registered merchant account) and `PRICE_UZS`.
+* **📊 Slides** (`/slides`): a topic (optionally "12 slides") or a file becomes a ready `.pptx` with speaker notes, in three styles. No invented sources.
+* **🔁 Converter** (`/convert`): .docx, .pdf, .txt, .md, .pptx convert to each other; photos (.jpg, .png) become PDF. Headings, paragraphs and lists are kept;
+  complex layout is simplified; scanned PDFs without a text layer are not supported.
+* **🕵️ AI check** (`/detect`): an estimate of how machine-like a text reads, with the most generic passages and advice. It is an orientation, not proof.

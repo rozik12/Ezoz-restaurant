@@ -56,7 +56,7 @@ def panel() -> Markup:
 
 HELP = ("🛠 <b>Панель администратора</b>\n\n"
         "<b>Команды</b>\n/stats статистика\n/users [стр] список пользователей\n/user ID или @ник карточка\n"
-        "/grant ID дни подписка (0 или меньше: отключить)\n/refund ID платёж вернуть Stars\n/ban ID · /unban ID\n"
+        "/grant ID звёзды начислить на кошелёк (минус: списать)\n/refund ID платёж вернуть Stars\n/ban ID · /unban ID\n"
         "/tickets открытые обращения\n/reply № текст ответить клиенту\n/close № закрыть обращение\n"
         "/broadcast рассылка всем\n/admins список админов\n/addadmin ID или @ник · /rmadmin ID (только владелец)\n\n"
         "Обращения приходят сюда сами. Ответить: кнопка «Ответить» или свайп-ответ на сообщение с обращением.")
@@ -83,7 +83,8 @@ async def stats_text(db: Database) -> str:
             f"🆕 Новых сегодня: {s['new_today']} · за 7 дней: {s['new_7d']}\n"
             f"🔥 Писали боту сегодня: {s['active_today']} · были за 7 дней: {s['active_7d']}\n"
             f"💬 Запросов сегодня: {s['requests_today']} · всего: {s['requests_total']}\n"
-            f"💎 Подписчиков сейчас: {s['paid']} · оплат: {s['payments']} на {s['stars']} ⭐\n"
+            f"💰 Пополнили кошелёк: {s['payers']} чел. · оплат: {s['payments']} (Stars получено: {s['stars']} ⭐)\n"
+            f"👛 Сейчас на кошельках: {s['wallets']} ⭐ · потрачено сегодня: {s['spent_today']} ⭐, всего: {s['spent_total']} ⭐\n"
             f"🧰 Сегодня: слайдов {s['tools_today'].get('slides', 0)} · проверок на ИИ {s['tools_today'].get('detect', 0)} · "
             f"конвертаций {s['tools_today'].get('convert', 0)}\n"
             f"💳 Оплат картой: {s['card_paid']} · ждут проверки: {s['card_pending']}\n"
@@ -105,7 +106,7 @@ async def stats_btn(call: CallbackQuery, db: Database) -> None:
 
 # ---------------- users ----------------
 def user_line(u: dict) -> str:
-    flags = ("💎" if u["paid_until"] > time.time() else "") + ("🚫" if u["banned"] else "")
+    flags = (f"💰{u['balance']}" if u["balance"] else "") + (" 🚫" if u["banned"] else "")
     nick = f" @{html.escape(u['username'])}" if u["username"] else ""
     return f"• {html.escape(u['name'] or '—')}{nick} · <code>{u['user_id']}</code> · {u['lang'] or '—'} {flags}".rstrip()
 
@@ -142,16 +143,16 @@ async def users_btn(call: CallbackQuery, db: Database) -> None:
 
 
 async def card(db: Database, u: dict) -> tuple[str, Markup]:
-    paid = u["paid_until"] > time.time()
     text = (f"👤 <b>{html.escape(u['name'] or '—')}</b>" + (f" @{html.escape(u['username'])}" if u["username"] else "") +
             f"\nID: <code>{u['user_id']}</code>\nЯзык: {u['lang'] or '—'} · режим: {kb.MODE_TITLES.get(u['mode'], u['mode'])}\n"
             f"Регистрация: {fdate(u['created'])} · была активность: {fdate(u['last_seen'])}\n"
             f"Запросов всего: {await db.user_requests(u['user_id'])} · сегодня: {await db.used_today(u['user_id'])}\n"
-            f"Подписка: {'до ' + fdate(u['paid_until']) if paid else 'нет'}\n"
+            f"Баланс: {u['balance']} ⭐\n"
             f"Статус: {'🚫 заблокирован' if u['banned'] else '✅ активен'}")
     uid = u["user_id"]
     markup = Markup(inline_keyboard=[
-        [Btn(text="💎 +30 дней", callback_data=f"ug:{uid}:30"), Btn(text="💎 Отключить", callback_data=f"ug:{uid}:0")],
+        [Btn(text="+50 ⭐", callback_data=f"ug:{uid}:50"), Btn(text="+100 ⭐", callback_data=f"ug:{uid}:100"),
+         Btn(text="−50 ⭐", callback_data=f"ug:{uid}:-50")],
         [Btn(text="✅ Разблокировать" if u["banned"] else "🚫 Заблокировать", callback_data=f"ub:{uid}"),
          Btn(text="✉️ Написать", callback_data=f"um:{uid}")]])
     return text, markup
@@ -194,32 +195,36 @@ async def find_input(message: Message, state: FSMContext, db: Database) -> None:
 
 
 # ---------------- subscriptions, bans, refunds ----------------
-async def set_sub(db: Database, bot: Bot, uid: int, days: int) -> str:
-    if days <= 0:
-        await db.revoke_subscription(uid)
-        return f"Подписка пользователя {uid} отключена."
-    until = await db.extend_subscription(uid, days)
+async def adjust(db: Database, bot: Bot, uid: int, stars: int) -> str:
+    """Admin changes a wallet: positive credits Stars, negative takes them (never below zero)."""
+    if stars == 0:
+        return "Нужно ненулевое число."
+    if stars < 0:
+        if not await db.charge(uid, -stars, "admin", "debit"):
+            return f"У пользователя {uid} на балансе {await db.balance(uid)} ⭐, списать {-stars} нельзя."
+        return f"Списано {-stars} ⭐. Баланс {uid}: {await db.balance(uid)} ⭐."
+    balance = await db.credit(uid, stars, "admin", "credit")
     lang = await db.get_lang(uid) or DEFAULT_LANG
     try:
-        await bot.send_message(uid, t(lang, "granted", until=fdate(until)))
+        await bot.send_message(uid, t(lang, "granted", n=stars, balance=balance))
     except TelegramAPIError:
         pass
-    return f"Подписка пользователя {uid} продлена до {fdate(until)}."
+    return f"Начислено {stars} ⭐. Баланс {uid}: {balance} ⭐."
 
 
 @router.message(Command("grant"))
 async def grant(message: Message, command: CommandObject, db: Database, bot: Bot) -> None:
     parts = (command.args or "").split()
     if len(parts) != 2 or not parts[0].isdigit() or not parts[1].lstrip("-").isdigit():
-        await message.answer("Формат: /grant ID дни (например /grant 123456789 30; 0 или меньше отключает подписку)")
+        await message.answer("Формат: /grant ID звёзды (например /grant 123456789 100 начислит 100 ⭐, /grant 123456789 -50 спишет 50)")
         return
-    await message.answer(await set_sub(db, bot, int(parts[0]), int(parts[1])))
+    await message.answer(await adjust(db, bot, int(parts[0]), int(parts[1])))
 
 
 @router.callback_query(F.data.startswith("ug:"))
 async def grant_btn(call: CallbackQuery, db: Database, bot: Bot) -> None:
-    _, uid, days = call.data.split(":")
-    await call.answer(await set_sub(db, bot, int(uid), int(days)), show_alert=True)
+    _, uid, stars = call.data.split(":")
+    await call.answer(await adjust(db, bot, int(uid), int(stars)), show_alert=True)
 
 
 async def ban(db: Database, settings: Settings, uid: int, banned: bool) -> str:
@@ -264,8 +269,9 @@ async def refund(message: Message, command: CommandObject, db: Database, bot: Bo
     except TelegramBadRequest as e:
         await message.answer(f"Не удалось вернуть Stars: {html.escape(str(e))}")
         return
-    await db.revoke_subscription(int(parts[0]))
-    await message.answer("Stars возвращены, подписка отключена.")
+    take = min(await db.payment_stars(parts[1]), await db.balance(int(parts[0])))
+    taken = take if take > 0 and await db.charge(int(parts[0]), take, "admin", "refund") else 0        # take back the credited Stars as far as the balance allows
+    await message.answer(f"Stars возвращены. С кошелька пользователя списано {taken} ⭐.")
 
 
 # ---------------- support desk ----------------
@@ -446,9 +452,9 @@ async def card_decision(call: CallbackQuery, db: Database, settings: Settings, b
     uid = pay["user_id"]
     lang = await db.get_lang(uid) or DEFAULT_LANG
     if approve:
-        until = await db.extend_subscription(uid, settings.sub_days)
-        await db.add_payment(uid, f"card:{pid}", 0, settings.sub_days)
-        text = t(lang, "card_approved", until=fdate(until))
+        balance = await db.credit(uid, pay["stars"], "card", f"card:{pid}")
+        await db.add_payment(uid, f"card:{pid}", 0, 0)
+        text = t(lang, "card_approved", stars=pay["stars"], balance=balance)
     else:
         text = t(lang, "card_rejected")
     try:

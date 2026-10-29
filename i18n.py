@@ -12,7 +12,6 @@ S: dict[str, tuple[str, str, str]] = {
     "btn_tech": ("🧮 Задачи и код", "🧮 Masala va kod", "🧮 Problems & code"),
     "btn_edit": ("📝 Редактор и перевод", "📝 Muharrir va tarjima", "📝 Editor & translation"),
     "btn_cheat": ("🎓 Шпаргалки и экзамен", "🎓 Shpargalka va imtihon", "🎓 Cheat sheets & exam"),
-    "btn_sub": ("💎 Подписка", "💎 Obuna", "💎 Subscription"),
     "btn_new": ("🧹 Новый диалог", "🧹 Yangi suhbat", "🧹 New chat"),
     "btn_support": ("🆘 Поддержка", "🆘 Yordam xizmati", "🆘 Support"),
     "btn_lang": ("🌐 Язык", "🌐 Til", "🌐 Language"),
@@ -44,13 +43,13 @@ S: dict[str, tuple[str, str, str]] = {
         "Need help with the bot? Tap «🆘 Support».",
     ),
     "help": (
-        "<b>Команды</b>\n/start главное меню\n/new новый диалог (забыть контекст)\n/subscribe подписка за Telegram Stars\n"
+        "<b>Команды</b>\n/start главное меню\n/new новый диалог (забыть контекст)\n/wallet кошелёк: баланс и пополнение\n"
         "/stars как купить Stars\n/support написать в поддержку\n/lang сменить язык\n/paysupport вопросы по оплате\n/id ваш Telegram ID\n\n"
         "Совет: чем точнее задача (тема, объём, стандарт оформления, дедлайн), тем лучше результат.",
-        "<b>Buyruqlar</b>\n/start asosiy menyu\n/new yangi suhbat (kontekstni unutish)\n/subscribe Telegram Stars orqali obuna\n"
+        "<b>Buyruqlar</b>\n/start asosiy menyu\n/new yangi suhbat (kontekstni unutish)\n/wallet hamyon: balans va to'ldirish\n"
         "/stars Stars qanday sotib olinadi\n/support yordam xizmatiga yozish\n/lang tilni almashtirish\n/paysupport to'lov bo'yicha savollar\n/id sizning Telegram ID\n\n"
         "Maslahat: topshiriq qanchalik aniq bo'lsa (mavzu, hajm, rasmiylashtirish standarti, muddat), natija shunchalik yaxshi.",
-        "<b>Commands</b>\n/start main menu\n/new new chat (forget the context)\n/subscribe subscription via Telegram Stars\n"
+        "<b>Commands</b>\n/start main menu\n/new new chat (forget the context)\n/wallet wallet: balance and top-up\n"
         "/stars how to buy Stars\n/support contact support\n/lang change language\n/paysupport payment questions\n/id your Telegram ID\n\n"
         "Tip: the more precise the task (topic, length, formatting standard, deadline), the better the result.",
     ),
@@ -131,66 +130,15 @@ S: dict[str, tuple[str, str, str]] = {
               "Men matn va .txt, .pdf, .docx fayllar bilan ishlayman. Savol yozing yoki fayl yuboring.",
               "I work with text and .txt, .pdf, .docx files. Write a question or send a file."),
     # ---- subscription ----
-    "sub_active": (
-        "💎 <b>Подписка активна</b> до {until}.\nРазвёрнутые ответы и до {paid} запросов в день.",
-        "💎 <b>Obuna faol</b>, {until} gacha.\nBatafsil javoblar va kuniga {paid} tagacha so'rov.",
-        "💎 <b>Subscription active</b> until {until}.\nFull-length answers and up to {paid} requests per day."),
-    "sub_free": (
-        "🆓 <b>Бесплатный тариф</b>: осталось запросов сегодня: {left} из {free}. Ответы компактные.\n\n"
-        "💎 <b>Подписка на {days} дней за {price} ⭐</b>:\n• до {paid} запросов в день\n"
-        "• большие главы курсовых и развёрнутые тексты\n• длинные ответы без обрезки",
-        "🆓 <b>Bepul tarif</b>: bugun {free} tadan {left} ta so'rov qoldi. Javoblar ixcham.\n\n"
-        "💎 <b>{days} kunlik obuna — {price} ⭐</b>:\n• kuniga {paid} tagacha so'rov\n"
-        "• kurs ishlarining katta boblari va batafsil matnlar\n• uzun javoblar qisqartirilmaydi",
-        "🆓 <b>Free plan</b>: {left} of {free} requests left today. Answers are compact.\n\n"
-        "💎 <b>{days}-day subscription for {price} ⭐</b>:\n• up to {paid} requests per day\n"
-        "• large chapters and full-length texts\n• long answers without cutting"),
-    "pay_btn": ("⭐ Оплатить {price} Stars", "⭐ {price} Stars to'lash", "⭐ Pay {price} Stars"),
-    "pay_btn_sub": ("⭐ Оформить подписку, {price} Stars", "⭐ Obuna olish, {price} Stars", "⭐ Subscribe, {price} Stars"),
-    "invoice_title": ("OmniStudent: подписка на {days} дней", "OmniStudent: {days} kunlik obuna", "OmniStudent: {days}-day subscription"),
-    "invoice_desc": (
-        "Развёрнутые ответы, большие главы работ и до {paid} запросов в день.",
-        "Batafsil javoblar, ishlarning katta boblari va kuniga {paid} tagacha so'rov.",
-        "Full-length answers, large chapters and up to {paid} requests per day."),
-    "invoice_label": ("Подписка {days} дней", "{days} kunlik obuna", "{days}-day subscription"),
     "bad_invoice": ("Счёт устарел. Откройте меню подписки и создайте новый.",
                     "Hisob eskirgan. Obuna menyusini oching va yangisini yarating.",
                     "This invoice has expired. Open the subscription menu and create a new one."),
-    "paid_ok": (
-        "✅ <b>Спасибо! Подписка активна до {until}.</b>\nТеперь доступны развёрнутые ответы и большие главы.",
-        "✅ <b>Rahmat! Obuna {until} gacha faol.</b>\nEndi batafsil javoblar va katta boblar mavjud.",
-        "✅ <b>Thank you! Your subscription is active until {until}.</b>\nFull-length answers and large chapters are now available."),
-    "granted": ("💎 Вам включена подписка до {until}.", "💎 Sizga {until} gacha obuna yoqildi.", "💎 A subscription has been enabled for you until {until}."),
-    "paysupport": (
-        "💬 <b>Вопросы по оплате.</b> Если оплата прошла, а подписка не включилась, или вы хотите вернуть Stars, "
-        "нажмите «🆘 Поддержка» и сообщите ID платежа из чата с чеком.",
-        "💬 <b>To'lov bo'yicha savollar.</b> To'lov o'tgan, lekin obuna yoqilmagan bo'lsa yoki Stars qaytarmoqchi bo'lsangiz, "
-        "«🆘 Yordam xizmati» tugmasini bosing va chekdagi to'lov ID sini yozing.",
-        "💬 <b>Payment questions.</b> If a payment went through but the subscription did not activate, or you want a Stars refund, "
-        "tap «🆘 Support» and send the payment ID from the receipt chat."),
     # ---- limits and errors ----
-    "limit_paid": ("Вы исчерпали дневной лимит ({n} запросов). Он обновится завтра.",
-                   "Kunlik limit tugadi ({n} ta so'rov). U ertaga yangilanadi.",
-                   "You have used your daily limit ({n} requests). It resets tomorrow."),
-    "limit_free": (
-        "На сегодня бесплатные запросы закончились ({n}). С подпиской за {price} ⭐ доступно до {paid} запросов в день "
-        "и большие главы работ. Лимит бесплатного тарифа обновится завтра.",
-        "Bugungi bepul so'rovlar tugadi ({n}). {price} ⭐ evaziga obuna bilan kuniga {paid} tagacha so'rov va ishlarning katta boblari "
-        "mavjud. Bepul tarif limiti ertaga yangilanadi.",
-        "Today's free requests are used up ({n}). A {price} ⭐ subscription gives up to {paid} requests a day and large chapters. "
-        "The free limit resets tomorrow."),
-    "last_free": ("Это был последний бесплатный запрос на сегодня.", "Bu bugungi oxirgi bepul so'rov edi.", "That was the last free request for today."),
     "busy": ("Я ещё отвечаю на предыдущий вопрос. Дождитесь ответа, пожалуйста.",
              "Men hali oldingi savolga javob bermoqdaman. Iltimos, javobni kuting.",
              "I'm still answering your previous question. Please wait for the answer."),
     "generic_error": ("⚠️ Что-то пошло не так. Попробуйте ещё раз через минуту.", "⚠️ Nimadir xato ketdi. Bir daqiqadan so'ng qayta urinib ko'ring.",
                       "⚠️ Something went wrong. Please try again in a minute."),
-    "truncated": (
-        "\n\n…ответ обрезан лимитом тарифа. Напишите «продолжи», чтобы получить следующую часть{upsell}.",
-        "\n\n…javob tarif limiti bilan qisqartirildi. Keyingi qismini olish uchun «davom et» deb yozing{upsell}.",
-        "\n\n…the answer was cut by the plan limit. Write «continue» to get the next part{upsell}."),
-    "truncated_upsell": (", а полные объёмные ответы доступны по подписке: /subscribe", ", to'liq katta javoblar esa obuna orqali: /subscribe",
-                         ", and full long answers are available with a subscription: /subscribe"),
     "err_not_ready": ("Ассистент пока не подключён. Попробуйте позже.", "Yordamchi hali ulanmagan. Keyinroq urinib ko'ring.",
                       "The assistant is not connected yet. Please try later."),
     "err_access": ("Ассистент временно недоступен: проблема с доступом к ИИ-сервису.", "Yordamchi vaqtincha mavjud emas: sun'iy intellekt xizmatiga kirishda muammo.",

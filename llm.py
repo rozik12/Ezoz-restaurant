@@ -78,7 +78,7 @@ class Assistant:
         history = await self._context(user_id)
         if history:                                         # send the full text of this turn, not the shortened copy
             history[-1] = {"role": "user", "content": text}
-        max_tokens = self.s.paid_max_tokens if paid else self.s.free_max_tokens
+        max_tokens = self.s.paid_max_tokens
         try:
             answer, truncated = await self._call(build_system(mode, "paid" if paid else "free", lang), history, max_tokens)
         except Exception:

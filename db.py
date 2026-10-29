@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     name       TEXT,
     mode       TEXT NOT NULL DEFAULT 'general',
     paid_until REAL NOT NULL DEFAULT 0,
+    balance    INTEGER NOT NULL DEFAULT 0,
     created    REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS messages (
@@ -40,9 +41,19 @@ CREATE TABLE IF NOT EXISTS card_payments (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     status  TEXT NOT NULL DEFAULT 'pending',
+    stars   INTEGER NOT NULL DEFAULT 0,
     created REAL NOT NULL,
     decided REAL
 );
+CREATE TABLE IF NOT EXISTS wallet_tx (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    delta   INTEGER NOT NULL,
+    kind    TEXT NOT NULL,
+    note    TEXT NOT NULL DEFAULT '',
+    ts      REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallet_tx(user_id, id);
 CREATE TABLE IF NOT EXISTS admins (
     user_id  INTEGER PRIMARY KEY,
     username TEXT,
@@ -89,7 +100,7 @@ class Database:
         await self._db.executescript(SCHEMA)
         async with self._db.execute("PRAGMA table_info(users)") as cur:
             cols = {r["name"] for r in await cur.fetchall()}
-        for col, ddl in (("lang", "TEXT"), ("banned", "INTEGER NOT NULL DEFAULT 0"), ("last_seen", "REAL NOT NULL DEFAULT 0")):
+        for col, ddl in (("lang", "TEXT"), ("banned", "INTEGER NOT NULL DEFAULT 0"), ("last_seen", "REAL NOT NULL DEFAULT 0"), ("balance", "INTEGER NOT NULL DEFAULT 0")):
             if col not in cols:                               # upgrade a database created by an older version
                 await self._db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
         await self._db.commit()
@@ -109,12 +120,15 @@ class Database:
             return row[0] if row and row[0] is not None else 0
 
     # ---------- users ----------
-    async def touch_user(self, user_id: int, username: str | None, name: str) -> None:
+    async def touch_user(self, user_id: int, username: str | None, name: str) -> bool:
+        """Registers or refreshes a user; True when this is the first time we see them."""
+        known = bool(await self._scalar("SELECT 1 FROM users WHERE user_id=?", (user_id,)))
         await self.db.execute(
             """INSERT INTO users(user_id, username, name, created, last_seen) VALUES(?,?,?,?,?)
                ON CONFLICT(user_id) DO UPDATE SET username=excluded.username, name=excluded.name, last_seen=excluded.last_seen""",
             (user_id, username, name, time.time(), time.time()))
         await self.db.commit()
+        return not known
 
     async def get_mode(self, user_id: int) -> str:
         async with self.db.execute("SELECT mode FROM users WHERE user_id=?", (user_id,)) as cur:
@@ -125,25 +139,32 @@ class Database:
         await self.db.execute("UPDATE users SET mode=? WHERE user_id=?", (mode, user_id))
         await self.db.commit()
 
-    async def paid_until(self, user_id: int) -> float:
-        return await self._scalar("SELECT paid_until FROM users WHERE user_id=?", (user_id,))
+    # ---------- wallet (Telegram Stars) ----------
+    async def balance(self, user_id: int) -> int:
+        return await self._scalar("SELECT balance FROM users WHERE user_id=?", (user_id,))
 
-    async def is_paid(self, user_id: int) -> bool:
-        return await self.paid_until(user_id) > time.time()
-
-    async def extend_subscription(self, user_id: int, days: int) -> float:
-        """Adds days on top of the remaining time, so paying early never loses what is left."""
-        base = max(await self.paid_until(user_id), time.time())
-        until = base + days * 86400
-        await self.db.execute(                      # also works for a user who has not opened the bot yet
-            """INSERT INTO users(user_id, created, paid_until) VALUES(?,?,?)
-               ON CONFLICT(user_id) DO UPDATE SET paid_until=excluded.paid_until""", (user_id, time.time(), until))
+    async def credit(self, user_id: int, stars: int, kind: str, note: str = "") -> int:
+        """Adds Stars (works for a user who has not opened the bot yet); returns the new balance."""
+        await self.db.execute(
+            """INSERT INTO users(user_id, created, balance) VALUES(?,?,?)
+               ON CONFLICT(user_id) DO UPDATE SET balance=balance+excluded.balance""", (user_id, time.time(), stars))
+        await self.db.execute("INSERT INTO wallet_tx(user_id, delta, kind, note, ts) VALUES(?,?,?,?,?)", (user_id, stars, kind, note, time.time()))
         await self.db.commit()
-        return until
+        return await self.balance(user_id)
 
-    async def revoke_subscription(self, user_id: int) -> None:
-        await self.db.execute("UPDATE users SET paid_until=0 WHERE user_id=?", (user_id,))
+    async def charge(self, user_id: int, stars: int, kind: str, note: str = "") -> bool:
+        """Takes Stars only if the balance covers them, in one atomic statement, so parallel requests cannot overspend."""
+        cur = await self.db.execute("UPDATE users SET balance=balance-? WHERE user_id=? AND balance>=?", (stars, user_id, stars))
+        if cur.rowcount != 1:
+            await self.db.commit()
+            return False
+        await self.db.execute("INSERT INTO wallet_tx(user_id, delta, kind, note, ts) VALUES(?,?,?,?,?)", (user_id, -stars, kind, note, time.time()))
         await self.db.commit()
+        return True
+
+    async def wallet_history(self, user_id: int, limit: int = 8) -> list[dict]:
+        async with self.db.execute("SELECT delta, kind, note, ts FROM wallet_tx WHERE user_id=? ORDER BY id DESC LIMIT ?", (user_id, limit)) as cur:
+            return [dict(r) for r in await cur.fetchall()]
 
     # ---------- history ----------
     async def add_message(self, user_id: int, role: str, content: str) -> None:
@@ -195,6 +216,9 @@ class Database:
         await self.db.execute("INSERT INTO payments(user_id, charge_id, stars, days, ts) VALUES(?,?,?,?,?)",
                               (user_id, charge_id, stars, days, time.time()))
         await self.db.commit()
+
+    async def payment_stars(self, charge_id: str) -> int:
+        return await self._scalar("SELECT stars FROM payments WHERE charge_id=?", (charge_id,))
 
     async def payment_exists(self, charge_id: str) -> bool:
         return bool(await self._scalar("SELECT 1 FROM payments WHERE charge_id=?", (charge_id,)))
@@ -288,8 +312,8 @@ class Database:
         return v or None
 
     # ---------- payments by card transfer ----------
-    async def create_card_payment(self, user_id: int) -> int:
-        cur = await self.db.execute("INSERT INTO card_payments(user_id, created) VALUES(?,?)", (user_id, time.time()))
+    async def create_card_payment(self, user_id: int, stars: int) -> int:
+        cur = await self.db.execute("INSERT INTO card_payments(user_id, stars, created) VALUES(?,?,?)", (user_id, stars, time.time()))
         await self.db.commit()
         return cur.lastrowid
 
@@ -315,7 +339,10 @@ class Database:
             "users": await self._scalar("SELECT COUNT(*) FROM users"),
             "new_today": await self._scalar("SELECT COUNT(*) FROM users WHERE created>=?", (day,)),
             "new_7d": await self._scalar("SELECT COUNT(*) FROM users WHERE created>=?", (now - 7 * 86400,)),
-            "paid": await self._scalar("SELECT COUNT(*) FROM users WHERE paid_until>?", (now,)),
+            "wallets": await self._scalar("SELECT COALESCE(SUM(balance),0) FROM users"),
+            "payers": await self._scalar("SELECT COUNT(DISTINCT user_id) FROM wallet_tx WHERE kind IN ('topup','topup_uzs','card')"),
+            "spent_today": await self._scalar("SELECT COALESCE(-SUM(delta),0) FROM wallet_tx WHERE kind='charge' AND ts>=?", (day,)),
+            "spent_total": await self._scalar("SELECT COALESCE(-SUM(delta),0) FROM wallet_tx WHERE kind='charge'"),
             "banned": await self._scalar("SELECT COUNT(*) FROM users WHERE banned=1"),
             "requests_today": await self._scalar("SELECT COALESCE(SUM(n),0) FROM usage WHERE day=?", (today(),)),
             "requests_total": await self._scalar("SELECT COALESCE(SUM(n),0) FROM usage"),

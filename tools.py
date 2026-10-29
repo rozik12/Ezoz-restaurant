@@ -25,6 +25,7 @@ from db import Database
 from docs import MAX_FILE_BYTES, UnsupportedFile, extract_text
 from i18n import labels, t
 from llm import Assistant, AssistantError
+from wallet import give_back, spend, spent_line
 
 log = logging.getLogger(__name__)
 
@@ -46,11 +47,6 @@ class Tool(StatesGroup):
 
 ANY_TOOL = StateFilter(Tool.slides, Tool.detect, Tool.convert)
 NOT_MENU = ~(F.text.startswith("/") | F.text.in_(kb.MENU_LABELS))     # the stored FSM state is stale after clear(), so exclude explicitly
-
-
-async def allowed(db: Database, settings: Settings, uid: int, tool: str, daily: int) -> tuple[bool, int]:
-    limit = daily * 3 if await db.is_paid(uid) else daily
-    return await db.tool_used_today(uid, tool) < limit, limit
 
 
 async def input_text(message: Message, bot: Bot, lang: str) -> str | None:
@@ -114,9 +110,7 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
         await message.answer(t(lang, "slides_short"))
         return
     uid = message.from_user.id
-    ok, limit = await allowed(db, settings, uid, "slides", settings.slides_daily)
-    if not ok:
-        await message.answer(t(lang, "tool_limit", n=limit), reply_markup=kb.main_menu(lang))
+    if not await spend(message, db, settings, uid, "slides", lang):
         await state.clear()
         return
     m = re.search(r"(\d{1,2})\s*(?:слайд|slayd|slide|sl\b)", topic.lower())
@@ -142,11 +136,13 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
                 log.warning("Slides: refinement skipped")
             data = await asyncio.to_thread(sl.build_pptx, deck, "modern", lang)
     except AssistantError as e:
-        await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}")
+        await give_back(db, settings, uid, "slides")
+        await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}\n{t(lang, 'refunded')}")
         return
     except Exception:
         log.exception("Slides failed")
-        await message.answer(t(lang, "slides_fail"))
+        await give_back(db, settings, uid, "slides")
+        await message.answer(f"{t(lang, 'slides_fail')}\n{t(lang, 'refunded')}")
         return
     finally:
         try:
@@ -154,11 +150,12 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
         except TelegramBadRequest:
             pass
     await db.count_tool(uid, "slides")
+    cost = await spent_line(db, settings, uid, "slides", lang)
     name = re.sub(r"[^\w\- ]+", "", deck.title).strip()[:40].replace(" ", "_") or "presentation"
     if len(_decks) >= MAX_DECKS:
         _decks.pop(next(iter(_decks)))
     _decks[uid] = (sl.deck_to_json(deck), name)
-    await message.answer_document(BufferedInputFile(data, filename=f"{name}.pptx"), caption=t(lang, "slides_done", n=len(deck.slides)),
+    await message.answer_document(BufferedInputFile(data, filename=f"{name}.pptx"), caption=t(lang, "slides_done", n=len(deck.slides)) + (f"\n{cost}" if cost else ""),
                                   reply_markup=kb.theme_buttons(lang, "modern"))
     await message.answer(t(lang, "slides_restyle"), reply_markup=kb.main_menu(lang))
     await state.clear()
@@ -188,9 +185,7 @@ async def check_ai(message: Message, state: FSMContext, bot: Bot, db: Database, 
         await message.answer(t(lang, "detect_short", n=detect.MIN_CHARS))
         return
     uid = message.from_user.id
-    ok, limit = await allowed(db, settings, uid, "detect", settings.detect_daily)
-    if not ok:
-        await message.answer(t(lang, "tool_limit", n=limit), reply_markup=kb.main_menu(lang))
+    if not await spend(message, db, settings, uid, "detect", lang):
         await state.clear()
         return
     text = text[:detect.MAX_CHARS]
@@ -201,11 +196,13 @@ async def check_ai(message: Message, state: FSMContext, bot: Bot, db: Database, 
             raw = await ai.complete(detect.prompt(lang, st), text, 1500)
             res = detect.parse(raw)
     except AssistantError as e:
-        await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}")
+        await give_back(db, settings, uid, "detect")
+        await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}\n{t(lang, 'refunded')}")
         return
     except Exception:
         log.exception("AI check failed")
-        await message.answer(t(lang, "detect_fail"))
+        await give_back(db, settings, uid, "detect")
+        await message.answer(f"{t(lang, 'detect_fail')}\n{t(lang, 'refunded')}")
         return
     finally:
         try:
@@ -224,6 +221,9 @@ async def check_ai(message: Message, state: FSMContext, bot: Bot, db: Database, 
     if res["advice"]:
         parts.append(t(lang, "detect_advice") + "\n" + "\n".join("• " + html.escape(x) for x in res["advice"]))
     parts.append(t(lang, "detect_note"))
+    cost = await spent_line(db, settings, uid, "detect", lang)
+    if cost:
+        parts.append(f"<i>{cost}</i>")
     await message.answer("\n\n".join(parts), reply_markup=kb.main_menu(lang))
     await state.clear()
 
@@ -254,20 +254,22 @@ async def do_convert(call: CallbackQuery, state: FSMContext, bot: Bot, db: Datab
         await call.answer(t(lang, "convert_expired"), show_alert=True)
         return
     uid = call.from_user.id
-    ok, limit = await allowed(db, settings, uid, "convert", settings.convert_daily)
-    if not ok:
-        await call.answer(t(lang, "tool_limit", n=limit), show_alert=True)
-        return
     await call.answer(t(lang, "convert_working"))
+    if not await spend(call.message, db, settings, uid, "convert", lang):
+        return
     try:
         buf = await bot.download(data["file_id"])
         name, out = await asyncio.to_thread(convert, data["name"], buf.read(), call.data.split(":")[1])
     except ConvertError as e:
-        await call.message.answer(f"⚠️ {t(lang, 'conv_err_' + e.key)}")
+        await give_back(db, settings, uid, "convert")
+        await call.message.answer(f"⚠️ {t(lang, 'conv_err_' + e.key)}\n{t(lang, 'refunded')}")
         return
     except Exception:
         log.exception("Conversion failed")
-        await call.message.answer(f"⚠️ {t(lang, 'convert_fail')}")
+        await give_back(db, settings, uid, "convert")
+        await call.message.answer(f"⚠️ {t(lang, 'convert_fail')}\n{t(lang, 'refunded')}")
         return
     await db.count_tool(uid, "convert")
-    await call.message.answer_document(BufferedInputFile(out, filename=name), caption=t(lang, "convert_done", name=html.escape(name)))
+    cost = await spent_line(db, settings, uid, "convert", lang)
+    await call.message.answer_document(BufferedInputFile(out, filename=name),
+                                       caption=t(lang, "convert_done", name=html.escape(name)) + (f"\n{cost}" if cost else ""))

@@ -29,30 +29,26 @@ class Settings:
     model: str
     admin_ids: tuple[int, ...]
     admin_usernames: tuple[str, ...]
-    free_daily: int
-    paid_daily: int
-    free_max_tokens: int
     paid_max_tokens: int
-    slides_daily: int
-    detect_daily: int
-    convert_daily: int
-    price_stars: int
-    price_uzs: int
+    prices: dict
+    topup_presets: tuple[int, ...]
+    topup_max: int
+    welcome_bonus: int
+    uzs_per_star: int
     card_number: str
     card_holder: str
     provider_token: str
-    sub_days: int
     db_path: str
     support_contact: str
 
     @property
     def card_ready(self) -> bool:
-        """Payment by transfer to an Uzbek card needs both the card and the amount in so'm."""
-        return bool(self.card_number and self.price_uzs)
+        """Payment by transfer to an Uzbek card needs the card and the so'm price of one Star."""
+        return bool(self.card_number and self.uzs_per_star)
 
     @property
     def provider_ready(self) -> bool:
-        return bool(self.provider_token and self.price_uzs)
+        return bool(self.provider_token and self.uzs_per_star)
 
     @classmethod
     def load(cls) -> "Settings":
@@ -69,19 +65,15 @@ class Settings:
             model=os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5").strip(),
             admin_ids=_ids("ADMIN_IDS"),
             admin_usernames=tuple(x.lstrip("@").lower() for x in os.getenv("ADMIN_USERNAMES", "").replace(" ", "").split(",") if x),
-            free_daily=_int("FREE_DAILY", 5),
-            paid_daily=_int("PAID_DAILY", 100),
-            free_max_tokens=_int("FREE_MAX_TOKENS", 1800),
-            paid_max_tokens=min(_int("PAID_MAX_TOKENS", 8000), 8192),          # DeepSeek allows up to 8192 output tokens
-            slides_daily=_int("SLIDES_DAILY", 3),
-            detect_daily=_int("DETECT_DAILY", 5),
-            convert_daily=_int("CONVERT_DAILY", 30),
-            price_stars=_int("PRICE_STARS", 300),
-            price_uzs=_int("PRICE_UZS", 0),
+            paid_max_tokens=min(_int("MAX_TOKENS", 8000), 8192),               # DeepSeek allows up to 8192 output tokens
+            prices={k: _int(f"PRICE_{k.upper()}", 50) for k in ("chat", "slides", "detect", "convert")},     # Stars per action
+            topup_presets=tuple(int(x) for x in os.getenv("TOPUP_PRESETS", "50,100,250,500,1000").replace(" ", "").split(",") if x.isdigit()),
+            topup_max=min(_int("TOPUP_MAX", 10000), 10000),                      # Telegram's ceiling for one Stars invoice
+            welcome_bonus=_int("WELCOME_BONUS", 0),
+            uzs_per_star=_int("UZS_PER_STAR", 0),
             card_number=os.getenv("CARD_NUMBER", "").strip(),
             card_holder=os.getenv("CARD_HOLDER", "").strip(),
             provider_token=os.getenv("PAYMENT_PROVIDER_TOKEN", "").strip(),
-            sub_days=_int("SUB_DAYS", 30),
             db_path=os.getenv("DB_PATH", "omnistudent.db").strip(),
             support_contact=os.getenv("SUPPORT_CONTACT", "").strip(),
         )

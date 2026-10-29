@@ -3,10 +3,6 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "btn_slides": ("📊 Слайды", "📊 Slaydlar", "📊 Slides"),
     "btn_detect": ("🕵️ Проверка на ИИ", "🕵️ AI tekshiruvi", "🕵️ AI check"),
     "btn_convert": ("🔁 Конвертер", "🔁 Konvertor", "🔁 Converter"),
-    "tool_limit": (
-        "Бесплатный лимит на сегодня исчерпан ({n}). Он обновится завтра; у подписчиков лимит втрое больше (/subscribe).",
-        "Bugungi bepul limit tugadi ({n}). U ertaga yangilanadi; obunachilarda limit uch barobar ko'p (/subscribe).",
-        "Today's free limit is used up ({n}). It resets tomorrow; subscribers get three times more (/subscribe)."),
     # ---- slides ----
     "slides_intro": (
         "📊 <b>Слайды бесплатно</b>\n\nНапишите тему презентации, можно с числом слайдов, например: <i>«Цифровой маркетинг, 12 слайдов»</i>. "
@@ -32,74 +28,9 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "slides_old": ("Эта презентация уже недоступна для смены стиля: создайте новую.", "Bu taqdimot uslubini o'zgartirib bo'lmaydi: yangisini yarating.",
                    "This deck can no longer be restyled: create a new one."),
     "stars_btn": ("ℹ️ Как купить Stars", "ℹ️ Stars qanday sotib olinadi", "ℹ️ How to buy Stars"),
-    "stars_howto": (
-        "⭐ <b>Как купить Telegram Stars</b>\n\n"
-        "<b>Способ 1. Прямо при оплате</b>\n"
-        "1. Нажмите «⭐ Оплатить» под подпиской.\n"
-        "2. В окне счёта нажмите «Оплатить». Если Stars не хватает, Telegram сам предложит докупить нужное количество.\n"
-        "3. Выберите способ оплаты (банковская карта, Apple Pay или Google Pay), подтвердите платёж. Stars сразу спишутся, и подписка включится.\n\n"
-        "<b>Способ 2. Заранее через настройки</b>\n"
-        "1. Откройте Telegram → <b>Настройки</b> → <b>Мои звёзды</b> (My Stars).\n"
-        "2. Нажмите <b>Купить звёзды</b> / «Пополнить» и выберите пакет.\n"
-        "3. Оплатите, и звёзды появятся на балансе. Потом вернитесь в бот и нажмите «💎 Подписка».\n\n"
-        "<b>Способ 3. Через бота @PremiumBot</b>: откройте его, нажмите Start и выберите «Купить звёзды».\n\n"
-        "💡 <b>Полезно знать</b>\n"
-        "• Если карта не проходит, попробуйте другую карту, Apple Pay или Google Pay.\n"
-        "• Цена звёзд может отличаться в зависимости от платформы: на iPhone через App Store обычно дороже, чем через карту на сайте или в Android.\n"
-        "• Stars можно получить в подарок от друга: пусть отправит их вам из своего баланса.\n"
-        "• Подписка стоит {price} ⭐ на {days} дней. Если оплата прошла, а подписка не включилась, нажмите «🆘 Поддержка».",
-        "⭐ <b>Telegram Stars qanday sotib olinadi</b>\n\n"
-        "<b>1-usul. To'lov paytida</b>\n"
-        "1. Obuna ostidagi «⭐ To'lash» tugmasini bosing.\n"
-        "2. Hisob oynasida «To'lash» ni bosing. Stars yetmasa, Telegram yetishmayotgan miqdorni o'zi sotib olishni taklif qiladi.\n"
-        "3. To'lov usulini tanlang (bank kartasi, Apple Pay yoki Google Pay) va tasdiqlang. Stars darhol yechiladi va obuna yoqiladi.\n\n"
-        "<b>2-usul. Oldindan sozlamalar orqali</b>\n"
-        "1. Telegram → <b>Sozlamalar</b> → <b>Mening yulduzlarim</b> (My Stars) bo'limini oching.\n"
-        "2. <b>Yulduz sotib olish</b> / «To'ldirish» ni bosing va paketni tanlang.\n"
-        "3. To'lang, yulduzlar balansingizda paydo bo'ladi. Keyin botga qayting va «💎 Obuna» ni bosing.\n\n"
-        "<b>3-usul. @PremiumBot orqali</b>: uni oching, Start ni bosing va «Yulduz sotib olish» ni tanlang.\n\n"
-        "💡 <b>Bilib qo'ying</b>\n"
-        "• Karta o'tmasa, boshqa karta, Apple Pay yoki Google Pay ni sinab ko'ring.\n"
-        "• Yulduzlar narxi platformaga qarab farq qilishi mumkin: iPhone da App Store orqali odatda qimmatroq.\n"
-        "• Yulduzlarni do'stingizdan sovg'a sifatida olish mumkin: ular o'z balansidan sizga yuborsin.\n"
-        "• Obuna {days} kunga {price} ⭐ turadi. To'lov o'tgan, lekin obuna yoqilmagan bo'lsa, «🆘 Yordam xizmati» ni bosing.",
-        "⭐ <b>How to buy Telegram Stars</b>\n\n"
-        "<b>Way 1. Right at checkout</b>\n"
-        "1. Tap «⭐ Pay» under the subscription.\n"
-        "2. In the invoice window tap «Pay». If you don't have enough Stars, Telegram offers to buy the missing amount.\n"
-        "3. Choose a payment method (bank card, Apple Pay or Google Pay) and confirm. The Stars are charged at once and the subscription turns on.\n\n"
-        "<b>Way 2. In advance via Settings</b>\n"
-        "1. Open Telegram → <b>Settings</b> → <b>My Stars</b>.\n"
-        "2. Tap <b>Buy Stars</b> / «Top up» and choose a package.\n"
-        "3. Pay, and the stars appear on your balance. Then return to the bot and tap «💎 Subscription».\n\n"
-        "<b>Way 3. Via @PremiumBot</b>: open it, tap Start and choose «Buy Stars».\n\n"
-        "💡 <b>Good to know</b>\n"
-        "• If your card is declined, try another card, Apple Pay or Google Pay.\n"
-        "• The price of Stars can differ by platform: on iPhone through the App Store it is usually higher.\n"
-        "• You can get Stars as a gift from a friend: they send them from their own balance.\n"
-        "• The subscription costs {price} ⭐ for {days} days. If a payment went through but the subscription did not activate, tap «🆘 Support»."),
     # ---- payment by card transfer ----
     "btn_card_pay": ("💳 Картой Uzcard / Humo", "💳 Uzcard / Humo kartasi bilan", "💳 Pay by Uzcard / Humo card"),
     "btn_provider": ("💳 Click / Payme", "💳 Click / Payme", "💳 Click / Payme"),
-    "card_text": (
-        "💳 <b>Оплата переводом на карту</b>\n\n"
-        "Сумма: <b>{amount} сум</b> (подписка на {days} дней)\n"
-        "Карта: <code>{card}</code>\n{holder}\n"
-        "1. Переведите ровно эту сумму через Click, Payme, Paynet или приложение вашего банка.\n"
-        "2. Нажмите «✅ Я оплатил» и пришлите скриншот или фото чека.\n"
-        "3. Администратор проверит платёж и включит подписку, обычно в течение нескольких часов.",
-        "💳 <b>Kartaga o'tkazma orqali to'lov</b>\n\n"
-        "Summa: <b>{amount} so'm</b> ({days} kunlik obuna)\n"
-        "Karta: <code>{card}</code>\n{holder}\n"
-        "1. Aynan shu summani Click, Payme, Paynet yoki bank ilovangiz orqali o'tkazing.\n"
-        "2. «✅ To'ladim» tugmasini bosing va chekning skrinshoti yoki rasmini yuboring.\n"
-        "3. Administrator to'lovni tekshirib, obunani yoqadi, odatda bir necha soat ichida.",
-        "💳 <b>Payment by card transfer</b>\n\n"
-        "Amount: <b>{amount} UZS</b> ({days}-day subscription)\n"
-        "Card: <code>{card}</code>\n{holder}\n"
-        "1. Transfer exactly this amount via Click, Payme, Paynet or your bank app.\n"
-        "2. Tap «✅ I have paid» and send a screenshot or photo of the receipt.\n"
-        "3. An administrator checks the payment and activates the subscription, usually within a few hours."),
     "card_holder_line": ("Получатель: {name}\n", "Qabul qiluvchi: {name}\n", "Recipient: {name}\n"),
     "card_paid_btn": ("✅ Я оплатил", "✅ To'ladim", "✅ I have paid"),
     "card_send": ("Пришлите скриншот или фото чека одним сообщением. Отмена: /cancel",
@@ -107,16 +38,125 @@ TOOLS: dict[str, tuple[str, str, str]] = {
                   "Send a screenshot or photo of the receipt in one message. Cancel: /cancel"),
     "card_need_photo": ("Нужен именно скриншот или фото чека (картинкой или файлом).", "Aynan chekning skrinshoti yoki rasmi kerak (rasm yoki fayl ko'rinishida).",
                         "Please send the receipt as a screenshot or photo (image or file)."),
-    "card_received": ("✅ Чек получен, заявка №{id}. Администратор проверит платёж и включит подписку. Я напишу вам здесь.",
-                      "✅ Chek qabul qilindi, №{id} ariza. Administrator to'lovni tekshirib, obunani yoqadi. Sizga shu yerda yozaman.",
-                      "✅ Receipt received, request #{id}. An administrator will check the payment and activate the subscription. I will message you here."),
     "card_pending": ("Ваша заявка на проверке, дождитесь ответа администратора.", "Arizangiz tekshiruvda, administrator javobini kuting.",
                      "Your request is being reviewed, please wait for the administrator."),
-    "card_approved": ("✅ Платёж подтверждён! Подписка активна до {until}.", "✅ To'lov tasdiqlandi! Obuna {until} gacha faol.",
-                      "✅ Payment confirmed! Your subscription is active until {until}."),
     "card_rejected": ("❌ Платёж не подтверждён. Если это ошибка, нажмите «🆘 Поддержка» и приложите чек.",
                       "❌ To'lov tasdiqlanmadi. Xato bo'lsa, «🆘 Yordam xizmati» tugmasini bosing va chekni ilova qiling.",
                       "❌ The payment was not confirmed. If this is a mistake, tap «🆘 Support» and attach the receipt."),
+    # ---- wallet ----
+    "truncated": (
+        "\n\n…ответ получился очень длинным и был обрезан. Напишите «продолжи», чтобы получить следующую часть (это отдельный вопрос по цене кошелька).",
+        "\n\n…javob juda uzun bo'lib, qisqartirildi. Keyingi qismini olish uchun «davom et» deb yozing (bu hamyon narxidagi alohida savol).",
+        "\n\n…the answer was very long and got cut. Write «continue» to get the next part (it counts as a separate question at the wallet price)."),
+    "btn_sub": ("💰 Кошелёк", "💰 Hamyon", "💰 Wallet"),
+    "wallet_text": (
+        "💰 <b>Ваш кошелёк</b>\n\nБаланс: <b>{balance} ⭐</b> (хватит примерно на {n} вопросов)\n\n"
+        "<b>Стоимость действий</b>\n• вопрос ассистенту: {chat} ⭐\n• презентация: {slides} ⭐\n• проверка на ИИ: {detect} ⭐\n• конвертация файла: {convert} ⭐\n\n"
+        "Пополнить можно на любую сумму, начиная с 1 ⭐: выберите вариант или нажмите «Другая сумма».",
+        "💰 <b>Sizning hamyoningiz</b>\n\nBalans: <b>{balance} ⭐</b> (taxminan {n} ta savolga yetadi)\n\n"
+        "<b>Harakatlar narxi</b>\n• yordamchiga savol: {chat} ⭐\n• taqdimot: {slides} ⭐\n• AI tekshiruvi: {detect} ⭐\n• faylni konvertatsiya qilish: {convert} ⭐\n\n"
+        "Hamyonni istalgan summaga to'ldirish mumkin, 1 ⭐ dan boshlab: variantni tanlang yoki «Boshqa summa» ni bosing.",
+        "💰 <b>Your wallet</b>\n\nBalance: <b>{balance} ⭐</b> (enough for about {n} questions)\n\n"
+        "<b>Cost of actions</b>\n• a question to the assistant: {chat} ⭐\n• a presentation: {slides} ⭐\n• an AI check: {detect} ⭐\n• a file conversion: {convert} ⭐\n\n"
+        "You can top up any amount, starting from 1 ⭐: pick an option or tap «Other amount»."),
+    "top_other": ("✏️ Другая сумма", "✏️ Boshqa summa", "✏️ Other amount"),
+    "top_ask": ("Напишите, на сколько звёзд пополнить кошелёк: любое целое число от 1 до {max}. Отмена: /cancel",
+                "Hamyonni necha yulduzga to'ldirishni yozing: 1 dan {max} gacha istalgan butun son. Bekor qilish: /cancel",
+                "Write how many Stars to add to your wallet: any whole number from 1 to {max}. Cancel: /cancel"),
+    "top_bad": ("Введите целое число от 1 до {max}.", "1 dan {max} gacha butun son kiriting.", "Enter a whole number from 1 to {max}."),
+    "top_title": ("Пополнение кошелька на {n} ⭐", "Hamyonni {n} ⭐ ga to'ldirish", "Wallet top-up: {n} ⭐"),
+    "top_desc": ("Звёзды зачисляются на ваш баланс в боте и тратятся на действия.", "Yulduzlar botdagi balansingizga o'tadi va harakatlarga sarflanadi.",
+                 "The Stars are added to your balance in the bot and spent on actions."),
+    "top_label": ("Пополнение {n} ⭐", "{n} ⭐ to'ldirish", "Top-up {n} ⭐"),
+    "top_ok": ("✅ Кошелёк пополнен на {n} ⭐. Баланс: {balance} ⭐.", "✅ Hamyon {n} ⭐ ga to'ldirildi. Balans: {balance} ⭐.",
+               "✅ Wallet topped up by {n} ⭐. Balance: {balance} ⭐."),
+    "need_funds": ("Недостаточно звёзд: действие стоит {price} ⭐, на балансе {balance} ⭐. Пополните кошелёк на любую сумму:",
+                   "Yulduz yetarli emas: harakat narxi {price} ⭐, balansda {balance} ⭐. Hamyonni istalgan summaga to'ldiring:",
+                   "Not enough Stars: the action costs {price} ⭐, your balance is {balance} ⭐. Top up any amount:"),
+    "top_missing": ("⭐ Пополнить на {n}", "⭐ {n} ga to'ldirish", "⭐ Top up {n}"),
+    "spent_line": ("−{n} ⭐ · баланс: {balance} ⭐", "−{n} ⭐ · balans: {balance} ⭐", "−{n} ⭐ · balance: {balance} ⭐"),
+    "refunded": ("Звёзды за этот запрос вам вернулись.", "Bu so'rov uchun yulduzlar qaytarildi.", "The Stars for this request were returned to you."),
+    "granted": ("💰 Вам начислено {n} ⭐. Баланс: {balance} ⭐.", "💰 Sizga {n} ⭐ berildi. Balans: {balance} ⭐.", "💰 You received {n} ⭐. Balance: {balance} ⭐."),
+    "paysupport": (
+        "💬 <b>Вопросы по оплате.</b> Если оплата прошла, а звёзды не зачислились, или нужно вернуть платёж, "
+        "нажмите «🆘 Поддержка» и сообщите ID платежа из чата с чеком.",
+        "💬 <b>To'lov bo'yicha savollar.</b> To'lov o'tgan, lekin yulduzlar tushmagan bo'lsa yoki to'lovni qaytarish kerak bo'lsa, "
+        "«🆘 Yordam xizmati» tugmasini bosing va chekdagi to'lov ID sini yozing.",
+        "💬 <b>Payment questions.</b> If a payment went through but the Stars were not added, or you need a refund, "
+        "tap «🆘 Support» and send the payment ID from the receipt chat."),
+    "stars_howto": (
+        "⭐ <b>Как купить Telegram Stars</b>\n\n"
+        "<b>Способ 1. Прямо при пополнении</b>\n"
+        "1. Откройте «💰 Кошелёк» и выберите сумму.\n"
+        "2. В окне счёта нажмите «Оплатить». Если Stars не хватает, Telegram сам предложит докупить нужное количество.\n"
+        "3. Выберите способ оплаты (банковская карта, Apple Pay или Google Pay) и подтвердите. Звёзды сразу зачислятся в кошелёк.\n\n"
+        "<b>Способ 2. Заранее через настройки</b>\n"
+        "1. Откройте Telegram → <b>Настройки</b> → <b>Мои звёзды</b> (My Stars).\n"
+        "2. Нажмите <b>Купить звёзды</b> / «Пополнить» и выберите пакет.\n"
+        "3. Оплатите, и звёзды появятся на балансе Telegram. Потом вернитесь в бот и пополните кошелёк.\n\n"
+        "<b>Способ 3. Через бота @PremiumBot</b>: откройте его, нажмите Start и выберите «Купить звёзды».\n\n"
+        "💡 <b>Полезно знать</b>\n"
+        "• Если карта не проходит, попробуйте другую карту, Apple Pay или Google Pay.\n"
+        "• Цена звёзд зависит от платформы: на iPhone через App Store обычно дороже.\n"
+        "• Звёзды можно получить в подарок от друга.\n"
+        "• Если оплата прошла, а звёзды не зачислились, нажмите «🆘 Поддержка».",
+        "⭐ <b>Telegram Stars qanday sotib olinadi</b>\n\n"
+        "<b>1-usul. Hamyonni to'ldirishda</b>\n"
+        "1. «💰 Hamyon» ni oching va summani tanlang.\n"
+        "2. Hisob oynasida «To'lash» ni bosing. Stars yetmasa, Telegram yetishmayotgan miqdorni o'zi sotib olishni taklif qiladi.\n"
+        "3. To'lov usulini tanlang (bank kartasi, Apple Pay yoki Google Pay) va tasdiqlang. Yulduzlar darhol hamyonga tushadi.\n\n"
+        "<b>2-usul. Oldindan sozlamalar orqali</b>\n"
+        "1. Telegram → <b>Sozlamalar</b> → <b>Mening yulduzlarim</b> (My Stars) bo'limini oching.\n"
+        "2. <b>Yulduz sotib olish</b> / «To'ldirish» ni bosing va paketni tanlang.\n"
+        "3. To'lang, yulduzlar Telegram balansida paydo bo'ladi. Keyin botga qayting va hamyonni to'ldiring.\n\n"
+        "<b>3-usul. @PremiumBot orqali</b>: uni oching, Start ni bosing va «Yulduz sotib olish» ni tanlang.\n\n"
+        "💡 <b>Bilib qo'ying</b>\n"
+        "• Karta o'tmasa, boshqa karta, Apple Pay yoki Google Pay ni sinab ko'ring.\n"
+        "• Yulduzlar narxi platformaga bog'liq: iPhone da App Store orqali odatda qimmatroq.\n"
+        "• Yulduzlarni do'stingizdan sovg'a sifatida olish mumkin.\n"
+        "• To'lov o'tgan, lekin yulduzlar tushmagan bo'lsa, «🆘 Yordam xizmati» ni bosing.",
+        "⭐ <b>How to buy Telegram Stars</b>\n\n"
+        "<b>Way 1. Right when topping up</b>\n"
+        "1. Open «💰 Wallet» and choose an amount.\n"
+        "2. In the invoice window tap «Pay». If you don't have enough Stars, Telegram offers to buy the missing amount.\n"
+        "3. Choose a payment method (bank card, Apple Pay or Google Pay) and confirm. The Stars land in your wallet at once.\n\n"
+        "<b>Way 2. In advance via Settings</b>\n"
+        "1. Open Telegram → <b>Settings</b> → <b>My Stars</b>.\n"
+        "2. Tap <b>Buy Stars</b> / «Top up» and choose a package.\n"
+        "3. Pay, and the stars appear on your Telegram balance. Then return to the bot and top up your wallet.\n\n"
+        "<b>Way 3. Via @PremiumBot</b>: open it, tap Start and choose «Buy Stars».\n\n"
+        "💡 <b>Good to know</b>\n"
+        "• If your card is declined, try another card, Apple Pay or Google Pay.\n"
+        "• The price of Stars depends on the platform: on iPhone through the App Store it is usually higher.\n"
+        "• You can get Stars as a gift from a friend.\n"
+        "• If a payment went through but the Stars were not added, tap «🆘 Support»."),
+    "card_ask": ("Сколько звёзд хотите купить? Напишите любое целое число от 1 (курс: 1 ⭐ = {rate} сум). Отмена: /cancel",
+                 "Necha yulduz sotib olmoqchisiz? 1 dan boshlab istalgan butun son yozing (kurs: 1 ⭐ = {rate} so'm). Bekor qilish: /cancel",
+                 "How many Stars do you want to buy? Write any whole number from 1 (rate: 1 ⭐ = {rate} UZS). Cancel: /cancel"),
+    "card_text": (
+        "💳 <b>Пополнение переводом на карту</b>\n\n"
+        "Нужно перевести: <b>{amount} сум</b>, на кошелёк придёт <b>{stars} ⭐</b>\n"
+        "Карта: <code>{card}</code>\n{holder}\n"
+        "1. Переведите ровно эту сумму через Click, Payme, Paynet или приложение вашего банка.\n"
+        "2. Нажмите «✅ Я оплатил» и пришлите скриншот или фото чека.\n"
+        "3. Администратор проверит платёж и зачислит звёзды, обычно в течение нескольких часов.",
+        "💳 <b>Kartaga o'tkazma orqali to'ldirish</b>\n\n"
+        "O'tkazish kerak: <b>{amount} so'm</b>, hamyonga <b>{stars} ⭐</b> tushadi\n"
+        "Karta: <code>{card}</code>\n{holder}\n"
+        "1. Aynan shu summani Click, Payme, Paynet yoki bank ilovangiz orqali o'tkazing.\n"
+        "2. «✅ To'ladim» tugmasini bosing va chekning skrinshoti yoki rasmini yuboring.\n"
+        "3. Administrator to'lovni tekshirib, yulduzlarni o'tkazadi, odatda bir necha soat ichida.",
+        "💳 <b>Top-up by card transfer</b>\n\n"
+        "Transfer: <b>{amount} UZS</b>, your wallet gets <b>{stars} ⭐</b>\n"
+        "Card: <code>{card}</code>\n{holder}\n"
+        "1. Transfer exactly this amount via Click, Payme, Paynet or your bank app.\n"
+        "2. Tap «✅ I have paid» and send a screenshot or photo of the receipt.\n"
+        "3. An administrator checks the payment and adds the Stars, usually within a few hours."),
+    "card_received": ("✅ Чек получен, заявка №{id}. Администратор проверит платёж и зачислит звёзды. Я напишу вам здесь.",
+                      "✅ Chek qabul qilindi, №{id} ariza. Administrator to'lovni tekshirib, yulduzlarni o'tkazadi. Sizga shu yerda yozaman.",
+                      "✅ Receipt received, request #{id}. An administrator will check the payment and add the Stars. I will message you here."),
+    "card_approved": ("✅ Платёж подтверждён! Зачислено {stars} ⭐. Баланс: {balance} ⭐.", "✅ To'lov tasdiqlandi! {stars} ⭐ o'tkazildi. Balans: {balance} ⭐.",
+                      "✅ Payment confirmed! {stars} ⭐ added. Balance: {balance} ⭐."),
     # ---- AI check ----
     "detect_intro": (
         "🕵️ <b>Проверка на ИИ</b>\n\nПришлите текст (от {n} знаков) или файл .txt, .pdf, .docx. Я оценю, насколько он похож на машинный, "

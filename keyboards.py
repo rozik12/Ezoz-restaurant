@@ -64,15 +64,22 @@ def theme_buttons(lang: str, current: str) -> InlineKeyboardMarkup:
                                                   for n in THEME_ORDER if n != current]])
 
 
-def subscribe_button(label: str, lang: str = "ru", *, card: bool = False, provider: bool = False) -> InlineKeyboardMarkup:
-    rows = [[InlineKeyboardButton(text=label, callback_data="pay")]]
-    if provider:
-        rows.append([InlineKeyboardButton(text=t(lang, "btn_provider"), callback_data="payp")])
-    if card:
-        rows.append([InlineKeyboardButton(text=t(lang, "btn_card_pay"), callback_data="card:info")])
-    rows.append([InlineKeyboardButton(text=t(lang, "stars_btn"), callback_data="stars:how")])
+def topup_markup(lang: str, settings, missing: int | None = None) -> InlineKeyboardMarkup:
+    """Top-up choices: the missing amount first (after a refused action), presets, any amount, then the other ways to pay."""
+    btn = InlineKeyboardButton
+    rows: list[list[InlineKeyboardButton]] = []
+    if missing and 1 <= missing <= settings.topup_max:
+        rows.append([btn(text=t(lang, "top_missing", n=missing), callback_data=f"top:{missing}")])
+    presets = [n for n in settings.topup_presets if n <= settings.topup_max]
+    rows += [[btn(text=f"⭐ {n}", callback_data=f"top:{n}") for n in presets[i:i + 3]] for i in range(0, len(presets), 3)]
+    rows.append([btn(text=t(lang, "top_other"), callback_data="top:custom")])
+    if settings.provider_ready:
+        rows.append([btn(text=t(lang, "btn_provider"), callback_data="topm:payp")])
+    if settings.card_ready:
+        rows.append([btn(text=t(lang, "btn_card_pay"), callback_data="topm:card")])
+    rows.append([btn(text=t(lang, "stars_btn"), callback_data="stars:how")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def card_paid_button(lang: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t(lang, "card_paid_btn"), callback_data="card:paid")]])
+def card_paid_button(lang: str, stars: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t(lang, "card_paid_btn"), callback_data=f"card:paid:{stars}")]])

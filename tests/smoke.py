@@ -1,7 +1,7 @@
 """End-to-end check against fake Telegram and fake Claude: python tests/smoke.py"""
 import asyncio, io, os, sys, tempfile, time
 os.environ.update(BOT_TOKEN="123456:TEST", ANTHROPIC_API_KEY="test", DB_PATH=tempfile.mktemp(suffix=".db"),
-                  ADMIN_IDS="900", ADMIN_USERNAMES="ArtyomGlupech", CARD_NUMBER="8600 1234 5678 9012", CARD_HOLDER="TEST HOLDER", PRICE_UZS="50000", PAYMENT_PROVIDER_TOKEN="123:TEST:abc", FREE_DAILY="3", PAID_DAILY="6", PRICE_STARS="300")
+                  ADMIN_IDS="900", ADMIN_USERNAMES="ArtyomGlupech", CARD_NUMBER="8600 1234 5678 9012", CARD_HOLDER="TEST HOLDER", UZS_PER_STAR="1200", PAYMENT_PROVIDER_TOKEN="123:TEST:abc")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from types import SimpleNamespace as NS
 from aiogram import Bot, Dispatcher
@@ -13,7 +13,7 @@ from config import Settings
 from db import Database
 from handlers import router
 import admin, support, tools
-import pay as paymod
+import wallet as walletmod
 from access import Access
 from llm import Assistant
 
@@ -84,7 +84,7 @@ async def body(s, db):
     ai = Assistant(s, db); fake = FakeMessages(); ai.client = NS(messages=fake)
     bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s)
     acc = Access(db, s); dp.message.outer_middleware(acc); dp.callback_query.outer_middleware(acc)
-    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(paymod.router); dp.include_router(router)
+    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(walletmod.router); dp.include_router(router)
     async def feed(d):
         calls.clear(); await dp.feed_update(bot, Update.model_validate(d, context={"bot": bot})); return list(calls)
     texts = lambda r: [c[1].get("text", "") for c in r if c[0] == "sendMessage"]
@@ -95,29 +95,46 @@ async def body(s, db):
     print("language ru + welcome ok, menu rows:", len(r[-1][1]["reply_markup"]["keyboard"]))
     r = await feed(msg(U, "✍️ Писать работу")); print("mode intro:", texts(r)[0][:40])
     r = await feed(msg(U, "Курсовая по маркетингу, 30 страниц")); out = texts(r)
+    assert "Недостаточно звёзд" in out[0], out; mk = r[0][1]["reply_markup"]["inline_keyboard"]
+    assert mk[0][0]["callback_data"] == "top:50", mk; print("empty wallet: question refused, top-up offered:", out[0][:60].replace("\n", " "))
+    assert not fake.calls, "no model call without Stars"
+    assert await db.credit(U, 120, "admin") == 120
+    r = await feed(msg(U, "Курсовая по маркетингу, 30 страниц")); out = texts(r)
     print("answer html:", out[0].replace("\n", " | "))
+    assert "−50 ⭐ · баланс: 70 ⭐" in out[0], out[0]; assert await db.balance(U) == 70; print("question charged 50, footer shows the balance")
     c = fake.calls[-1]
-    assert "OmniStudent" in c["system"] and "Академический писатель" in c["system"] and "Тариф: бесплатный" in c["system"], "prompt parts"
+    assert "OmniStudent" in c["system"] and "Академический писатель" in c["system"] and "Тариф: подписка" in c["system"], "prompt parts"
     assert "интерфейса пользователя: русский" in c["system"]
-    assert c["max_tokens"] == s.free_max_tokens and c["messages"][-1]["role"] == "user"
-    print("system prompt ok, free max_tokens =", c["max_tokens"])
+    assert c["max_tokens"] == s.paid_max_tokens and c["messages"][-1]["role"] == "user"
+    print("system prompt ok, max_tokens =", c["max_tokens"])
     r = await feed(msg(U, "А теперь план"))
     assert len(fake.calls[-1]["messages"]) == 3, fake.calls[-1]["messages"]            # user, assistant, user
-    print("memory ok: history sent =", len(fake.calls[-1]["messages"]), "messages")
-    r = await feed(msg(U, "ДЛИННО")); assert "обрезан" in texts(r)[0] and "/subscribe" in texts(r)[0]; print("truncation note for free plan ok")
-    r = await feed(msg(U, "ещё вопрос")); t = texts(r)[0]; print("limit reached:", t[:60]); assert "бесплатные запросы закончились" in t and "inline_keyboard" in r[0][1]["reply_markup"]
-    r = await feed(cb(U, "pay")); inv = [c for c in r if c[0] == "sendInvoice"][0][1]
-    print("invoice:", inv["currency"], inv["prices"], inv["payload"]); assert inv["currency"] == "XTR" and inv["prices"][0]["amount"] == 300
-    pre = {"update_id": 9001, "pre_checkout_query": {"id": "p1", "from": user(U), "currency": "XTR", "total_amount": 300, "invoice_payload": f"sub:{U}"}}
-    r = await feed(pre); print("pre-checkout answer:", [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"])
-    bad = dict(pre, update_id=9002); bad["pre_checkout_query"] = dict(pre["pre_checkout_query"], total_amount=1)
-    r = await feed(bad); print("wrong amount rejected:", [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"])
-    pay = msg(U, successful_payment={"currency": "XTR", "total_amount": 300, "invoice_payload": f"sub:{U}", "telegram_payment_charge_id": "ch1", "provider_payment_charge_id": "pp"})
-    r = await feed(pay); print("paid:", texts(r)[0][:60]); assert await db.is_paid(U)
-    await feed(pay); assert await db._scalar("SELECT COUNT(*) FROM payments") == 1, "duplicate payment update must not extend twice"
-    r = await feed(msg(U, "после оплаты")); assert fake.calls[-1]["max_tokens"] == s.paid_max_tokens and "Тариф: подписка" in fake.calls[-1]["system"]
-    print("paid plan: max_tokens =", fake.calls[-1]["max_tokens"])
-    r = await feed(msg(U, "ОШИБКА")); print("API error shown nicely:", texts(r)[0][:70]); assert "перегружен" in texts(r)[0]
+    print("memory ok: history sent =", len(fake.calls[-1]["messages"]), "messages"); assert await db.balance(U) == 20
+    r = await feed(msg(U, "ещё вопрос")); t = texts(r)[0]; assert "Недостаточно звёзд" in t and "действие стоит 50" in t and "баланс" not in t.lower() or "20" in t
+    mk = r[0][1]["reply_markup"]["inline_keyboard"]; assert mk[0][0]["callback_data"] == "top:30", mk; print("short balance: offers exactly the missing 30 ⭐")
+    # top-up with Stars: any amount
+    r = await feed(msg(U, "/wallet")); w = texts(r)[0]; assert "20 ⭐" in w and "50 ⭐" in w; cbs = [b["callback_data"] for row in r[0][1]["reply_markup"]["inline_keyboard"] for b in row]
+    assert cbs[:5] == ["top:50", "top:100", "top:250", "top:500", "top:1000"] and "top:custom" in cbs and "topm:card" in cbs and "topm:payp" in cbs and "stars:how" in cbs, cbs; print("wallet screen ok:", cbs)
+    r = await feed(cb(U, "top:100")); inv = [c for c in r if c[0] == "sendInvoice"][0][1]
+    print("invoice:", inv["currency"], inv["prices"], inv["payload"]); assert inv["currency"] == "XTR" and inv["prices"][0]["amount"] == 100 and inv["payload"] == f"top:{U}"
+    r = await feed(cb(U, "top:custom")); r = await feed(msg(U, "abc")); assert "Введите целое число" in texts(r)[0]
+    r = await feed(msg(U, "0")); assert "Введите целое число" in texts(r)[0]; r = await feed(msg(U, "10001")); assert "Введите целое число" in texts(r)[0]
+    r = await feed(msg(U, "7")); inv = [c for c in r if c[0] == "sendInvoice"][0][1]; assert inv["prices"][0]["amount"] == 7; print("custom amount of 7 Stars accepted (no minimum beyond 1)")
+    r = await feed(cb(U, "top:custom")); r = await feed(msg(U, "1")); assert [c for c in r if c[0] == "sendInvoice"][0][1]["prices"][0]["amount"] == 1; print("custom amount of 1 Star accepted")
+    pre = lambda uid, amt, payload, cur="XTR", n=[9000]: {"update_id": (n.__setitem__(0, n[0] + 1) or n[0]), "pre_checkout_query": {"id": "p", "from": user(uid), "currency": cur, "total_amount": amt, "invoice_payload": payload}}
+    ok = lambda r: [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"]
+    assert ok(await feed(pre(U, 100, f"top:{U}"))) == [True] and ok(await feed(pre(U, 1, f"top:{U}"))) == [True]
+    assert ok(await feed(pre(U, 0, f"top:{U}"))) == [False] and ok(await feed(pre(U, 100, f"top:{U + 1}"))) == [False] and ok(await feed(pre(U, 100, "junk"))) == [False]
+    print("pre-checkout: any amount from 1 accepted; zero, someone else's payload and junk rejected")
+    pay = msg(U, successful_payment={"currency": "XTR", "total_amount": 100, "invoice_payload": f"top:{U}", "telegram_payment_charge_id": "ch1", "provider_payment_charge_id": "pp"})
+    r = await feed(pay); print("paid:", texts(r)[0][:60]); assert await db.balance(U) == 120
+    await feed(pay); assert await db.balance(U) == 120 and await db._scalar("SELECT COUNT(*) FROM payments") == 1, "duplicate payment update must not credit twice"
+    r = await feed(msg(U, "после оплаты")); assert await db.balance(U) == 70; print("paid top-up spent on the next question")
+    r = await feed(msg(U, "ДЛИННО")); assert "обрезан" in texts(r)[0]; assert await db.balance(U) == 20; print("truncation note ok")
+    await db.credit(U, 100, "admin")
+    before = await db.balance(U)
+    r = await feed(msg(U, "ОШИБКА")); print("API error shown nicely:", texts(r)[0][:70].replace("\n", " ")); assert "перегружен" in texts(r)[0] and "вернулись" in texts(r)[0]
+    assert await db.balance(U) == before, "a failed request must cost nothing"; print("failed request refunded")
     assert len(await db.history(U, 50)) % 2 == 0, "failed question must not stay in history"
     r = await feed(cb(U, "mode:exam")); r = await feed(msg(U, "Начинай, тема: цифровой маркетинг")); assert "Вредный преподаватель" in fake.calls[-1]["system"]; print("exam mode prompt ok")
     doc = msg(U, document={"file_id": "f", "file_unique_id": "u", "file_name": "lecture.txt", "file_size": 100}, caption="Сделай шпаргалку")
@@ -131,11 +148,11 @@ async def body(s, db):
     await feed(msg(V, "/start")); r = await feed(cb(V, "lang:uz")); assert any("Salom" in x for x in texts(r)); print("uz welcome ok")
     r = await feed(msg(V, "🆘 Yordam xizmati")); assert "Yordam xizmati" in texts(r)[0]; print("uz support entry ok")
     await feed(msg(V, "/cancel"))
-    await feed(msg(V, "Salom, kurs ishi kerak")); assert "o'zbekcha" in fake.calls[-1]["system"]; print("uz system hint ok")
+    await db.credit(V, 500, "admin"); await feed(msg(V, "Salom, kurs ishi kerak")); assert "o'zbekcha" in fake.calls[-1]["system"]; print("uz system hint ok")
     await feed(msg(W, "/start")); r = await feed(cb(W, "lang:en")); assert any("Hi! I'm OmniStudent" in x for x in texts(r)); print("en welcome ok")
     r = await feed(msg(W, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("en mode button ok")
-    r = await feed(msg(V, "/subscribe")); assert "Bepul tarif" in texts(r)[0]; print("uz subscription text ok")
-    r = await feed(cb(V, "stars:how")); howto = texts(r)[0]; assert "Mening yulduzlarim" in howto and "300 ⭐" in howto; print("stars how-to (uz) ok")
+    r = await feed(msg(V, "/wallet")); assert "Sizning hamyoningiz" in texts(r)[0] and "Boshqa summa" in str(r[0][1]["reply_markup"]); print("uz wallet text ok")
+    r = await feed(cb(V, "stars:how")); howto = texts(r)[0]; assert "Mening yulduzlarim" in howto; print("stars how-to (uz) ok")
     r = await feed(msg(W, "/stars")); assert "My Stars" in texts(r)[0] and "@PremiumBot" in texts(r)[0]; print("/stars (en) ok")
     r = await feed(msg(V, "🌐 Til")); assert "inline_keyboard" in r[0][1]["reply_markup"]; print("language button ok")
 
@@ -167,7 +184,7 @@ async def body(s, db):
 
     # ---------- free tools ----------
     T = 400
-    await feed(msg(T, "/start")); await feed(cb(T, "lang:en"))
+    await feed(msg(T, "/start")); await feed(cb(T, "lang:en")); await db.credit(T, 250, "admin")
     r = await feed(msg(T, "📊 Slides")); assert "Free slides" in texts(r)[0]
     r = await feed(msg(T, "Digital marketing, 8 slides")); docs_out = [c for c in r if c[0] == "sendDocument"]
     assert docs_out and docs_out[0][1]["caption"].startswith("✅ Done: 2 slides"), r; print("slides ok:", docs_out[0][1]["caption"])
@@ -181,42 +198,45 @@ async def body(s, db):
     r = await feed(msg(T, "🔁 Converter")); assert "File converter" in texts(r)[0]
     r = await feed(msg(T, document={"file_id": "f", "file_unique_id": "u", "file_name": "notes.txt", "file_size": 100}))
     kbd = r[-1][1]["reply_markup"]["inline_keyboard"]; print("convert targets:", [b["text"] for row in kbd for b in row]); assert any(b["callback_data"] == "cv:pdf" for row in kbd for b in row)
-    r = await feed(cb(T, "cv:pdf")); d = [c for c in r if c[0] == "sendDocument"]; assert d and d[0][1]["caption"] == "✅ Done: notes.pdf"; print("convert ok:", d[0][1]["caption"])
+    r = await feed(cb(T, "cv:pdf")); d = [c for c in r if c[0] == "sendDocument"]; assert d and d[0][1]["caption"].startswith("✅ Done: notes.pdf"); print("convert ok:", d[0][1]["caption"])
     r = await feed(msg(T, document={"file_id": "f", "file_unique_id": "u", "file_name": "a.zip", "file_size": 100})); assert "not supported" in texts(r)[0]
-    r = await feed(msg(T, "/cancel")); assert await db.tool_used_today(T, "slides") == 1
+    r = await feed(msg(T, "/cancel")); assert await db.tool_used_today(T, "slides") == 1 and await db.balance(T) == 250 - 50 - 50 - 50, await db.balance(T)
+    print("slides, AI check and conversion each cost 50:", await db.balance(T), "left")
     r = await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("menu button leaves a tool ok")
-    for i in range(3):
-        await feed(msg(T, "📊 Slides")); r = await feed(msg(T, f"Topic number {i} here"))
-    assert "limit is used up" in texts(r)[0], texts(r); print("tool limit ok:", texts(r)[0][:50])
+    await db.charge(T, 50, "admin"); assert await db.balance(T) == 50
+    await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "Another topic")); assert await db.balance(T) == 0 and any(c[0] == "sendDocument" for c in r)
+    await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "One more topic")); assert "Not enough Stars" in texts(r)[0], texts(r); print("tool refused with an empty wallet:", texts(r)[0][:50])
 
     # ---------- Uzbek cards: transfer + receipt, and Click/Payme provider ----------
     P = 500
     await feed(msg(P, "/start")); await feed(cb(P, "lang:uz"))
-    r = await feed(msg(P, "/subscribe")); cbs = [b["callback_data"] for row in r[0][1]["reply_markup"]["inline_keyboard"] for b in row]
-    assert cbs == ["pay", "payp", "card:info", "stars:how"], cbs; print("subscribe buttons:", cbs)
-    r = await feed(cb(P, "card:info")); card_txt = texts(r)[0]; assert "8600 1234 5678 9012" in card_txt and "50 000 so'm" in card_txt and "TEST HOLDER" in card_txt; print("card instructions (uz) ok")
-    r = await feed(cb(P, "card:paid")); assert "skrinshoti" in texts(r)[0]
-    r = await feed(msg(P, "hello")); assert "skrinshoti yoki rasmi kerak" in texts(r)[0]; print("text instead of receipt rejected")
+    r = await feed(cb(P, "topm:card")); assert "1 ⭐ = 1 200 so'm" in texts(r)[0]; print("card top-up asks the amount (uz):", texts(r)[0][:50])
+    r = await feed(msg(P, "x")); assert "butun son" in texts(r)[0]
+    r = await feed(msg(P, "30")); card_txt = texts(r)[0]; assert "8600 1234 5678 9012" in card_txt and "36 000 so'm" in card_txt and "30 ⭐" in card_txt and "TEST HOLDER" in card_txt; print("card instructions ok: 30 ⭐ = 36 000 so'm")
+    r = await feed(cb(P, "card:paid:30")); assert "skrinshoti" in texts(r)[0]
+    r = await feed(msg(P, "hello")); assert "skrinshoti yoki rasmi kerak" in texts(r)[0]
     r = await feed(msg(P, photo=[{"file_id": "p", "file_unique_id": "pu", "width": 10, "height": 10}]))
-    to_adm = [c for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == 900 and "Оплата картой" in c[1]["text"]]; assert to_adm and any(c[0] == "copyMessage" for c in r)
-    assert "№1 ariza" in texts(r)[-1] or "ariza" in texts(r)[-1]; print("receipt sent to admin:", to_adm[0][1]["text"].replace("\n", " | ")[:80])
-    r = await feed(cb(P, "card:paid")); assert "tekshiruvda" in texts(r)[0]; print("second request while pending blocked")
-    r = await feed(cb(900, "cp:ok:1")); assert await db.is_paid(P); assert any("tasdiqlandi" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == P); print("approved -> subscription on, user notified in uz")
-    until1 = await db.paid_until(P); r = await feed(cb(900, "cp:ok:1")); assert await db.paid_until(P) == until1; print("double approval does not extend twice")
-    await feed(cb(P, "card:paid")); await feed(msg(P, photo=[{"file_id": "p2", "file_unique_id": "pu2", "width": 10, "height": 10}]))
-    r = await feed(cb(900, "cp:no:2")); assert any("tasdiqlanmadi" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == P); assert await db.paid_until(P) == until1; print("rejected ok")
-    r = await feed(cb(P, "payp")); inv = [c for c in r if c[0] == "sendInvoice"][0][1]; assert inv["currency"] == "UZS" and inv["prices"][0]["amount"] == 5_000_000 and inv["provider_token"].startswith("123:"); print("provider invoice ok:", inv["currency"], inv["prices"][0]["amount"])
-    pre = {"update_id": 9101, "pre_checkout_query": {"id": "q1", "from": user(P), "currency": "UZS", "total_amount": 5_000_000, "invoice_payload": f"sub:{P}"}}
-    r = await feed(pre); assert [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"] == [True]
-    bad = dict(pre, update_id=9102); bad["pre_checkout_query"] = dict(pre["pre_checkout_query"], total_amount=1)
-    r = await feed(bad); assert [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"] == [False]; print("UZS pre-checkout ok")
-    r = await feed(msg(900, "/stats")); assert "Оплат картой: 1" in texts(r)[0]
+    to_adm = [c for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == 900 and "Пополнение картой" in c[1]["text"]]; assert to_adm and any(c[0] == "copyMessage" for c in r) and "30 ⭐" in to_adm[0][1]["text"]
+    print("receipt sent to admin:", to_adm[0][1]["text"].replace("\n", " | ")[:90])
+    r = await feed(cb(P, "card:paid:30")); assert "tekshiruvda" in texts(r)[0]; print("second request while pending blocked")
+    r = await feed(cb(900, "cp:ok:1")); assert await db.balance(P) == 30 and any("30 ⭐" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == P); print("approved -> 30 ⭐ credited, user notified in uz")
+    r = await feed(cb(900, "cp:ok:1")); assert await db.balance(P) == 30; print("double approval does not credit twice")
+    await feed(cb(P, "topm:card")); await feed(msg(P, "5")); await feed(cb(P, "card:paid:5")); await feed(msg(P, photo=[{"file_id": "p2", "file_unique_id": "pu2", "width": 10, "height": 10}]))
+    r = await feed(cb(900, "cp:no:2")); assert any("tasdiqlanmadi" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == P); assert await db.balance(P) == 30; print("rejected ok")
+    await feed(cb(P, "topm:payp")); r = await feed(msg(P, "5")); inv = [c for c in r if c[0] == "sendInvoice"][0][1]
+    assert inv["currency"] == "UZS" and inv["prices"][0]["amount"] == 5 * 1200 * 100 and inv["payload"] == f"topu:{P}:5" and inv["provider_token"].startswith("123:"); print("provider invoice ok:", inv["currency"], inv["prices"][0]["amount"])
+    assert ok(await feed(pre(P, 600000, f"topu:{P}:5", "UZS"))) == [True] and ok(await feed(pre(P, 600000, f"topu:{P}:6", "UZS"))) == [False] and ok(await feed(pre(P, 600000, f"topu:{P}:5", "XTR"))) == [False]
+    print("UZS pre-checkout ok")
+    pay2 = msg(P, successful_payment={"currency": "UZS", "total_amount": 600000, "invoice_payload": f"topu:{P}:5", "telegram_payment_charge_id": "chu1", "provider_payment_charge_id": "ppu"})
+    await feed(pay2); await feed(pay2); assert await db.balance(P) == 35; print("Click/Payme top-up credited 5 ⭐ once")
+    r = await feed(msg(900, "/stats")); assert "Пополнили кошелёк" in texts(r)[0]; print("stats:", texts(r)[0].replace("\n", " | ")[:260])
 
     # ---------- admin tools ----------
     r = await feed(msg(900, "/stats")); print("admin stats:", texts(r)[0].replace("\n", " | "))
     r = await feed(msg(900, "/users")); assert "Пользователи:" in texts(r)[0]; print("users list ok:", texts(r)[0].count("•"), "rows")
     r = await feed(msg(900, "/user @u100")); assert "Запросов всего" in texts(r)[0]; print("user card ok")
-    r = await feed(msg(900, "/grant 555 30")); print("grant:", texts(r)[0]); assert await db.is_paid(555)
+    r = await feed(msg(900, "/grant 555 80")); print("grant:", texts(r)[0]); assert await db.balance(555) == 80
+    r = await feed(msg(900, "/grant 555 -30")); assert await db.balance(555) == 50; r = await feed(msg(900, "/grant 555 -500")); assert await db.balance(555) == 50 and "нельзя" in texts(r)[0]; print("debit works and cannot go below zero")
     r = await feed(msg(900, f"/ban {V}")); assert "заблокирован" in texts(r)[0]
     r = await feed(msg(V, "hello")); assert "ограничен" in texts(r)[0] or "cheklangan" in texts(r)[0]; print("banned user blocked:", texts(r)[0])
     r = await feed(msg(900, f"/unban {V}")); r = await feed(msg(V, "Salom")); assert "o'zbekcha" in fake.calls[-1]["system"]; print("unban ok")

@@ -4,14 +4,12 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
-import time
-from datetime import datetime, timezone
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
-from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.chat_action import ChatActionSender
 
 import keyboards as kb
@@ -20,6 +18,7 @@ from db import Database
 from docs import MAX_FILE_BYTES, UnsupportedFile, extract_text
 from fmt import md_to_html, split_markdown
 from i18n import DEFAULT_LANG, LANGS, t
+from wallet import give_back, spend, spent_line
 from llm import Assistant, AssistantError
 
 log = logging.getLogger(__name__)
@@ -34,17 +33,17 @@ def _lock(user_id: int) -> asyncio.Lock:
     return _locks.setdefault(user_id, asyncio.Lock())
 
 
-def _fmt_until(ts: float) -> str:
-    return datetime.fromtimestamp(ts, timezone.utc).strftime("%d.%m.%Y")
-
-
-async def send_answer(message: Message, text: str) -> None:
-    """Sends a long Markdown answer as several HTML messages; falls back to plain text if Telegram rejects the markup."""
-    for chunk in split_markdown(text):
+async def send_answer(message: Message, text: str, footer: str = "") -> None:
+    """Sends a long Markdown answer as several HTML messages; falls back to plain text if Telegram rejects the markup.
+    `footer` (what the action cost) rides on the last message."""
+    chunks = split_markdown(text)
+    for i, chunk in enumerate(chunks):
+        last = footer if i == len(chunks) - 1 else ""
         try:
-            await message.answer(md_to_html(chunk), parse_mode="HTML", disable_web_page_preview=True)
+            await message.answer(md_to_html(chunk) + (f"\n\n<i>{html.escape(footer)}</i>" if last else ""), parse_mode="HTML",
+                                 disable_web_page_preview=True)
         except TelegramBadRequest:
-            await message.answer(chunk, parse_mode=None, disable_web_page_preview=True)
+            await message.answer(chunk + (f"\n\n{footer}" if last else ""), parse_mode=None, disable_web_page_preview=True)
 
 
 # =========================== start, language, help, menu ===========================
@@ -122,81 +121,7 @@ async def pick_cheat_mode(call: CallbackQuery, db: Database, lang: str) -> None:
     await call.message.answer(t(lang, f"intro_{mode}"))
 
 
-# =========================== subscription (Telegram Stars) ===========================
-async def status_text(db: Database, s: Settings, user_id: int, lang: str) -> str:
-    until = await db.paid_until(user_id)
-    if until > time.time():
-        return t(lang, "sub_active", until=_fmt_until(until), paid=s.paid_daily)
-    left = max(0, s.free_daily - await db.used_today(user_id))
-    return t(lang, "sub_free", left=left, free=s.free_daily, days=s.sub_days, price=s.price_stars, paid=s.paid_daily)
-
-
-@router.message(Command("subscribe"))
-@router.message(F.text.in_(kb.BTN_SUB))
-async def subscribe(message: Message, db: Database, settings: Settings, lang: str) -> None:
-    await message.answer(await status_text(db, settings, message.from_user.id, lang),
-                         reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
-
-
-async def send_invoice(target: Message, settings: Settings, user_id: int, lang: str) -> None:
-    await target.answer_invoice(
-        title=t(lang, "invoice_title", days=settings.sub_days),
-        description=t(lang, "invoice_desc", paid=settings.paid_daily),
-        payload=f"sub:{user_id}", currency="XTR",
-        prices=[LabeledPrice(label=t(lang, "invoice_label", days=settings.sub_days), amount=settings.price_stars)],
-        provider_token="")
-
-
-@router.message(Command("stars"))
-async def stars_howto(message: Message, settings: Settings, lang: str) -> None:
-    await message.answer(t(lang, "stars_howto", price=settings.price_stars, days=settings.sub_days))
-
-
-@router.callback_query(F.data == "stars:how")
-async def stars_howto_btn(call: CallbackQuery, settings: Settings, lang: str) -> None:
-    await call.answer()
-    await call.message.answer(t(lang, "stars_howto", price=settings.price_stars, days=settings.sub_days),
-                              reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
-
-
-@router.callback_query(F.data == "pay")
-async def pay_button(call: CallbackQuery, settings: Settings, lang: str) -> None:
-    await call.answer()
-    await send_invoice(call.message, settings, call.from_user.id, lang)
-
-
-@router.callback_query(F.data == "payp")
-async def provider_button(call: CallbackQuery, settings: Settings, lang: str) -> None:
-    """Click / Payme through a Telegram payment provider (bills in so'm; amounts are in tiyin)."""
-    await call.answer()
-    if not settings.provider_ready:
-        return
-    await call.message.answer_invoice(
-        title=t(lang, "invoice_title", days=settings.sub_days), description=t(lang, "invoice_desc", paid=settings.paid_daily),
-        payload=f"sub:{call.from_user.id}", currency="UZS", provider_token=settings.provider_token,
-        prices=[LabeledPrice(label=t(lang, "invoice_label", days=settings.sub_days), amount=settings.price_uzs * 100)])
-
-
-@router.pre_checkout_query()
-async def pre_checkout(query: PreCheckoutQuery, settings: Settings, db: Database) -> None:
-    expected = {"XTR": settings.price_stars, "UZS": settings.price_uzs * 100 if settings.provider_ready else -1}
-    ok = expected.get(query.currency) == query.total_amount and query.invoice_payload == f"sub:{query.from_user.id}"
-    lang = await db.get_lang(query.from_user.id) or DEFAULT_LANG
-    await query.answer(ok=ok, error_message=None if ok else t(lang, "bad_invoice"))
-
-
-@router.message(F.successful_payment)
-async def paid(message: Message, db: Database, settings: Settings, lang: str) -> None:
-    p = message.successful_payment
-    if await db.payment_exists(p.telegram_payment_charge_id):            # Telegram may redeliver an update
-        return
-    await db.touch_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
-    await db.add_payment(message.from_user.id, p.telegram_payment_charge_id, p.total_amount if p.currency == "XTR" else 0, settings.sub_days)
-    until = await db.extend_subscription(message.from_user.id, settings.sub_days)
-    log.info("Subscription paid by %s, %s Stars", message.from_user.id, p.total_amount)
-    await message.answer(t(lang, "paid_ok", until=_fmt_until(until)), reply_markup=kb.main_menu(lang))
-
-
+# =========================== payment questions ===========================
 @router.message(Command("paysupport"))
 async def pay_support(message: Message, lang: str) -> None:
     await message.answer(t(lang, "paysupport"))
@@ -206,41 +131,29 @@ async def pay_support(message: Message, lang: str) -> None:
 async def run_assistant(message: Message, db: Database, ai: Assistant, settings: Settings, text: str, lang: str,
                         stored: str | None = None) -> None:
     uid = message.from_user.id
-    await db.touch_user(uid, message.from_user.username, message.from_user.full_name)
-    paid = await db.is_paid(uid)
-    limit = settings.paid_daily if paid else settings.free_daily
-    if await db.used_today(uid) >= limit:
-        if paid:
-            await message.answer(t(lang, "limit_paid", n=limit))
-        else:
-            await message.answer(t(lang, "limit_free", n=limit, price=settings.price_stars, paid=settings.paid_daily),
-                                 reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
-        return
     lock = _lock(uid)
     if lock.locked():
         await message.answer(t(lang, "busy"))
         return
     async with lock:
+        if not await spend(message, db, settings, uid, "chat", lang):
+            return
         mode = await db.get_mode(uid)
         try:
             async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
-                answer, truncated = await ai.ask(uid, text, mode=mode, paid=paid, lang=lang, stored=stored)
-        except AssistantError as e:
-            await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}")
-            return
-        except Exception:
-            log.exception("Unexpected error while answering")
-            await message.answer(t(lang, "generic_error"))
+                answer, truncated = await ai.ask(uid, text, mode=mode, paid=True, lang=lang, stored=stored)
+        except Exception as e:                                # the action did not happen, so the Stars go back
+            await give_back(db, settings, uid, "chat")
+            if isinstance(e, AssistantError):
+                await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}\n{t(lang, 'refunded')}")
+            else:
+                log.exception("Unexpected error while answering")
+                await message.answer(f"{t(lang, 'generic_error')}\n{t(lang, 'refunded')}")
             return
         await db.count_use(uid)
         if truncated:
-            answer += t(lang, "truncated", upsell="" if paid else t(lang, "truncated_upsell"))
-        await send_answer(message, answer)
-        if not paid:
-            left = max(0, limit - await db.used_today(uid))
-            if left == 0:
-                await message.answer(t(lang, "last_free"),
-                                     reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
+            answer += t(lang, "truncated")
+        await send_answer(message, answer, footer=await spent_line(db, settings, uid, "chat", lang))
 
 
 @router.message(F.document)
