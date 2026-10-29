@@ -97,7 +97,16 @@ CREATE TABLE IF NOT EXISTS payments (
     charge_id TEXT NOT NULL,
     stars     INTEGER NOT NULL,
     days      INTEGER NOT NULL,
-    ts        REAL NOT NULL
+    ts        REAL NOT NULL,
+    refunded  INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS refund_requests (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    stars   INTEGER NOT NULL,
+    status  TEXT NOT NULL DEFAULT 'pending',
+    created REAL NOT NULL,
+    decided REAL
 );
 """
 
@@ -122,6 +131,9 @@ class Database:
                 await self._db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
         async with self._db.execute("PRAGMA table_info(card_payments)") as cur:
             have = {r["name"] for r in await cur.fetchall()}
+        async with self._db.execute("PRAGMA table_info(payments)") as cur:
+            if "refunded" not in {r["name"] for r in await cur.fetchall()}:
+                await self._db.execute("ALTER TABLE payments ADD COLUMN refunded INTEGER NOT NULL DEFAULT 0")
         for col in ("stars", "chat_id", "msg_id"):
             if col not in have:
                 await self._db.execute(f"ALTER TABLE card_payments ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
@@ -257,6 +269,47 @@ class Database:
 
     async def payment_exists(self, charge_id: str) -> bool:
         return bool(await self._scalar("SELECT 1 FROM payments WHERE charge_id=?", (charge_id,)))
+
+    # ---------- refunds of Stars bought through Telegram ----------
+    async def refundable(self, user_id: int) -> tuple[list[dict], int]:
+        """Payments (newest first) that can still be returned in full, and their total.
+        Spending is assumed to eat purchased Stars first, so bonuses and admin credits can never cover a refund of Stars that were already used."""
+        rows = await self._rows("SELECT charge_id, stars FROM payments WHERE user_id=? AND stars>0 AND refunded=0 ORDER BY id DESC", (user_id,))
+        purchased = sum(r["stars"] for r in rows)
+        net_spent = -await self._scalar("SELECT COALESCE(SUM(delta),0) FROM wallet_tx WHERE user_id=? AND kind IN ('charge','refund')", (user_id,))
+        cap = min(await self.balance(user_id), max(0, purchased - net_spent))
+        chosen = []
+        for r in rows:
+            if r["stars"] <= cap:
+                chosen.append(dict(r))
+                cap -= r["stars"]
+        return chosen, sum(c["stars"] for c in chosen)
+
+    async def mark_payment_refunded(self, charge_id: str) -> None:
+        await self.db.execute("UPDATE payments SET refunded=1 WHERE charge_id=?", (charge_id,))
+        await self.db.commit()
+
+    async def create_refund_request(self, user_id: int, stars: int) -> int:
+        cur = await self.db.execute("INSERT INTO refund_requests(user_id, stars, created) VALUES(?,?,?)", (user_id, stars, time.time()))
+        await self.db.commit()
+        return cur.lastrowid
+
+    async def get_refund_request(self, rid: int) -> dict | None:
+        rows = await self._rows("SELECT * FROM refund_requests WHERE id=?", (rid,))
+        return dict(rows[0]) if rows else None
+
+    async def pending_refunds_of(self, user_id: int) -> int:
+        return await self._scalar("SELECT COUNT(*) FROM refund_requests WHERE user_id=? AND status='pending'", (user_id,))
+
+    async def pending_refund_requests(self, limit: int = 10) -> list[dict]:
+        rows = await self._rows("SELECT r.*, u.name, u.username FROM refund_requests r LEFT JOIN users u ON u.user_id=r.user_id "
+                                "WHERE r.status='pending' ORDER BY r.id LIMIT ?", (limit,))
+        return [dict(r) for r in rows]
+
+    async def decide_refund_request(self, rid: int, status: str) -> bool:
+        cur = await self.db.execute("UPDATE refund_requests SET status=?, decided=? WHERE id=? AND status='pending'", (status, time.time(), rid))
+        await self.db.commit()
+        return cur.rowcount == 1
 
     # ---------- finished works (so the user can download them again) ----------
     async def add_work(self, user_id: int, kind: str, title: str, file_id: str, size: int) -> int:
@@ -413,6 +466,7 @@ class Database:
             "payers": await self._scalar("SELECT COUNT(DISTINCT user_id) FROM wallet_tx WHERE kind IN ('topup','topup_uzs','card') AND ts>=?", (since,)),
             "new_users": await self._scalar("SELECT COUNT(*) FROM users WHERE created>=?", (since,)),
             "active_users": await self._scalar("SELECT COUNT(*) FROM users WHERE last_seen>=?", (since,)),
+            "refunded": await self._scalar("SELECT COALESCE(-SUM(delta),0) FROM wallet_tx WHERE kind='refund_out' AND ts>=?", (since,)),
             "by_action": {r["note"]: r["n"] for r in await self._rows(
                 "SELECT note, COUNT(*) AS n FROM wallet_tx WHERE kind='charge' AND ts>=? GROUP BY note", (since,))},
         }

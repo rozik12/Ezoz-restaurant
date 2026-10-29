@@ -322,6 +322,38 @@ async def body(s, db):
     r = await feed(cb(R, "pc:go")); assert "Недостаточно звёзд" in " ".join(texts(r)) and not [c for c in r if c[0] == "sendDocument"]; print("order refused with an empty wallet")
     await feed(msg(R, "/write")); await feed(cb(R, "pk:course")); r = await feed(msg(R, "📊 Слайды")); assert "Презентация" in texts(r)[0]; print("a menu tap leaves the work wizard")
 
+    # ---------- refund of unused Stars ----------
+    Q = 900_100
+    await feed(msg(Q, "/start")); await feed(cb(Q, "lang:ru"))
+    for n_, cid in ((50, "chq1"), (100, "chq2")):
+        await feed(msg(Q, successful_payment={"currency": "XTR", "total_amount": n_, "invoice_payload": f"top:{Q}", "telegram_payment_charge_id": cid, "provider_payment_charge_id": "pp"}))
+    assert await db.balance(Q) == 150
+    r = await feed(msg(Q, "/wallet")); assert "rf:info" in str(markup_of(r)); print("wallet screen has the refund button")
+    r = await feed(cb(Q, "rf:info")); assert "150 ⭐" in texts(r)[0] and "платежей: 2" in texts(r)[0]
+    await feed(msg(Q, "Вопрос")); assert await db.balance(Q) == 100
+    r = await feed(cb(Q, "rf:info")); assert "100 ⭐" in texts(r)[0] and "платежей: 1" in texts(r)[0]; print("after spending 50 only the payment that is still fully unspent can be returned:", texts(r)[0][:90].replace("\n", " "))
+    r = await feed(cb(Q, "rf:ask")); adm = [c for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == 900]; assert adm and "Заявка на возврат" in adm[0][1]["text"] and "cr:ok" in str(adm[0][1]["reply_markup"]); assert "отправлена администратору" in texts(r)[-1]
+    r = await feed(cb(Q, "rf:info")); assert "уже есть заявка" in texts(r)[0]; print("a second request is refused while one is pending")
+    r = await feed(msg(900, "💳 Оплаты")); assert any("Заявка на возврат #1" in x for x in texts(r)); print("pending refund shows in the admin's payments list")
+    r = await feed(cb(900, "cr:ok:1")); ref = [c for c in r if c[0] == "refundStarPayment"]
+    assert ref and ref[0][1]["telegram_payment_charge_id"] == "chq2" and ref[0][1]["user_id"] == Q and await db.balance(Q) == 0, (r, await db.balance(Q))
+    assert any("Возврат выполнен: 100 ⭐" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == Q); print("approved: Telegram refund of the 100 ⭐ payment, wallet debited, user notified")
+    r = await feed(cb(900, "cr:ok:1")); assert not [c for c in r if c[0] == "refundStarPayment"]; print("double approval refunds nothing")
+    r = await feed(cb(Q, "rf:info")); assert "нечего возвращать" in texts(r)[0], texts(r); print("the remaining 50 ⭐ payment is not refundable once part of it was spent")
+    # bonuses cannot cover Stars that were already spent
+    X = 900_200
+    await feed(msg(X, "/start")); await feed(cb(X, "lang:ru"))
+    await feed(msg(X, successful_payment={"currency": "XTR", "total_amount": 100, "invoice_payload": f"top:{X}", "telegram_payment_charge_id": "chx1", "provider_payment_charge_id": "pp"}))
+    await feed(msg(X, "Вопрос 1")); await feed(msg(X, "Вопрос 2")); await db.credit(X, 100, "admin")
+    assert await db.balance(X) == 100; r = await feed(cb(X, "rf:info")); assert "нечего возвращать" in texts(r)[0]; print("an admin credit cannot be used to refund Stars that were already spent")
+    Y = 900_300
+    await feed(msg(Y, "/start")); await feed(cb(Y, "lang:ru")); await db.credit(Y, 80, "admin")
+    r = await feed(cb(Y, "rf:info")); assert "нечего возвращать" in texts(r)[0]
+    await feed(msg(Y, successful_payment={"currency": "XTR", "total_amount": 40, "invoice_payload": f"top:{Y}", "telegram_payment_charge_id": "chy1", "provider_payment_charge_id": "pp"}))
+    await feed(cb(Y, "rf:ask")); r = await feed(cb(900, "cr:no:2")); assert not [c for c in r if c[0] == "refundStarPayment"] and await db.balance(Y) == 120
+    assert any("Возврат не одобрен" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == Y); print("rejected refund leaves the wallet untouched")
+    r = await feed(msg(900, "📈 Доход")); assert "Возвращено клиентам: 100 ⭐" in texts(r)[0]; print("report shows the returned Stars")
+
     # ---------- the admin's own interface ----------
     r = await feed(msg(900, "/start")); first = [c for c in r if c[0] == "sendMessage"][0]
     assert "Админка" in first[1]["text"] and len(first[1]["reply_markup"]["keyboard"]) == 6 and "✍️ Писать работу" not in str(first[1]["reply_markup"])

@@ -124,4 +124,30 @@ ORD: dict[str, tuple[str, str, str]] = {
     "works_title": ("📂 <b>Мои работы</b>\nНажмите, чтобы скачать файл ещё раз:", "📂 <b>Mening ishlarim</b>\nFaylni qayta yuklab olish uchun bosing:",
                     "📂 <b>My works</b>\nTap to download a file again:"),
     "works_gone": ("Файл больше не доступен.", "Fayl endi mavjud emas.", "The file is no longer available."),
+    # ---- refund of Stars ----
+    "btn_refund": ("↩️ Вернуть звёзды", "↩️ Yulduzlarni qaytarish", "↩️ Refund Stars"),
+    "refund_info": (
+        "↩️ <b>Возврат звёзд</b>\n\nМожно вернуть неиспользованные звёзды, купленные через Telegram Stars: <b>{n} ⭐</b> (платежей: {k}). Возврат делается платежами целиком.\n"
+        "Они вернутся на ваш счёт Telegram, а с кошелька в боте спишутся. Потраченные на работы звёзды не возвращаются, а при сбое они возвращаются сами. "
+        "Заявку рассматривает администратор.",
+        "↩️ <b>Yulduzlarni qaytarish</b>\n\nTelegram Stars orqali sotib olingan ishlatilmagan yulduzlarni qaytarish mumkin: <b>{n} ⭐</b> (to'lovlar: {k}). Qaytarish to'lovlar bo'yicha to'liq amalga oshiriladi.\n"
+        "Ular Telegram hisobingizga qaytadi, botdagi hamyondan esa yechiladi. Ishlarga sarflangan yulduzlar qaytarilmaydi, nosozlikda esa o'zi qaytadi. "
+        "Arizani administrator ko'rib chiqadi.",
+        "↩️ <b>Refund of Stars</b>\n\nYou can get back unused Stars bought through Telegram Stars: <b>{n} ⭐</b> (payments: {k}). Refunds are made per whole payment.\n"
+        "They return to your Telegram account and are taken off the bot wallet. Stars spent on works are not refunded, and after a failure they come back by themselves. "
+        "An administrator reviews the request."),
+    "refund_none": (
+        "Сейчас нечего возвращать: нет неиспользованных звёзд, купленных через Telegram Stars. Если вы пополняли картой или Click/Payme, напишите в «🆘 Поддержка».",
+        "Hozir qaytariladigan narsa yo'q: Telegram Stars orqali sotib olingan ishlatilmagan yulduzlar yo'q. Karta yoki Click/Payme orqali to'ldirgan bo'lsangiz, «🆘 Yordam xizmati» ga yozing.",
+        "There is nothing to refund right now: no unused Stars bought through Telegram Stars. If you topped up by card or Click/Payme, write to «🆘 Support»."),
+    "refund_ask": ("✅ Запросить возврат {n} ⭐", "✅ {n} ⭐ qaytarishni so'rash", "✅ Request a refund of {n} ⭐"),
+    "refund_sent": ("✅ Заявка №{id} на возврат {n} ⭐ отправлена администратору. Я напишу вам здесь.", "✅ {n} ⭐ qaytarish bo'yicha №{id} ariza administratorga yuborildi. Sizga shu yerda yozaman.",
+                    "✅ Refund request #{id} for {n} ⭐ was sent to the administrator. I will message you here."),
+    "refund_pending": ("У вас уже есть заявка на возврат, дождитесь ответа.", "Sizda qaytarish bo'yicha ariza allaqachon bor, javobni kuting.",
+                       "You already have a refund request, please wait for the answer."),
+    "refund_done": ("✅ Возврат выполнен: {n} ⭐ вернулись на ваш счёт Telegram. Баланс в боте: {balance} ⭐.",
+                    "✅ Qaytarish bajarildi: {n} ⭐ Telegram hisobingizga qaytdi. Botdagi balans: {balance} ⭐.",
+                    "✅ Refund done: {n} ⭐ returned to your Telegram account. Bot balance: {balance} ⭐."),
+    "refund_rejected": ("❌ Возврат не одобрен. Если это ошибка, напишите в «🆘 Поддержка».", "❌ Qaytarish tasdiqlanmadi. Xato bo'lsa, «🆘 Yordam xizmati» ga yozing.",
+                        "❌ The refund was not approved. If this is a mistake, write to «🆘 Support»."),
 }

@@ -78,7 +78,7 @@ def topup_markup(lang: str, settings, missing: int | None = None) -> InlineKeybo
         rows.append([btn(text=t(lang, "btn_provider"), callback_data="topm:payp")])
     if settings.card_ready:
         rows.append([btn(text=t(lang, "btn_card_pay"), callback_data="topm:card")])
-    rows.append([btn(text=t(lang, "stars_btn"), callback_data="stars:how")])
+    rows.append([btn(text=t(lang, "stars_btn"), callback_data="stars:how"), btn(text=t(lang, "btn_refund"), callback_data="rf:info")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

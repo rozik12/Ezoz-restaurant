@@ -96,6 +96,47 @@ async def stars_howto_btn(call: CallbackQuery, lang: str) -> None:
     await call.message.answer(t(lang, "stars_howto"))
 
 
+# ---------------------------------------------------------------- refund of unused Stars
+@router.callback_query(F.data == "rf:info")
+async def refund_info(call: CallbackQuery, db: Database, lang: str) -> None:
+    await call.answer()
+    if await db.pending_refunds_of(call.from_user.id):
+        await call.message.answer(t(lang, "refund_pending"))
+        return
+    chosen, total = await db.refundable(call.from_user.id)
+    if not total:
+        await call.message.answer(t(lang, "refund_none"))
+        return
+    await call.message.answer(t(lang, "refund_info", n=total, k=len(chosen)),
+                              reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t(lang, "refund_ask", n=total), callback_data="rf:ask")]]))
+
+
+@router.callback_query(F.data == "rf:ask")
+async def refund_ask(call: CallbackQuery, bot: Bot, db: Database, settings: Settings, lang: str) -> None:
+    await call.answer()
+    u = call.from_user
+    if await db.pending_refunds_of(u.id):
+        await call.message.answer(t(lang, "refund_pending"))
+        return
+    chosen, total = await db.refundable(u.id)
+    if not total:
+        await call.message.answer(t(lang, "refund_none"))
+        return
+    rid = await db.create_refund_request(u.id, total)
+    head = (f"↩️ <b>Заявка на возврат #{rid}</b>\n"
+            f"От: {html.escape(u.full_name)}" + (f" (@{html.escape(u.username)})" if u.username else "") +
+            f"\nID: <code>{u.id}</code>\nВернуть: <b>{total} ⭐</b> ({len(chosen)} плат.) · баланс в боте: {await db.balance(u.id)} ⭐\n"
+            "Звёзды вернутся пользователю в Telegram, с кошелька спишутся.")
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=f"✅ Вернуть {total} ⭐", callback_data=f"cr:ok:{rid}"),
+                                                    InlineKeyboardButton(text="❌ Отклонить", callback_data=f"cr:no:{rid}")]])
+    for admin_id in await admin_chat_ids(db, settings):
+        try:
+            await bot.send_message(admin_id, head, reply_markup=markup)
+        except Exception:
+            log.warning("Could not notify admin %s about refund %s", admin_id, rid)
+    await call.message.answer(t(lang, "refund_sent", id=rid, n=total))
+
+
 # ---------------------------------------------------------------- top-up with Stars
 async def stars_invoice(target: Message, settings: Settings, uid: int, lang: str, n: int) -> None:
     await target.answer_invoice(
