@@ -50,15 +50,16 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "\n\n…the answer was very long and got cut. Write «continue» to get the next part (it counts as a separate question at the wallet price)."),
     "btn_sub": ("💰 Кошелёк", "💰 Hamyon", "💰 Wallet"),
     "wallet_text": (
-        "💰 <b>Ваш кошелёк</b>\n\nБаланс: <b>{balance} ⭐</b> (хватит примерно на {n} вопросов)\n\n"
+        "💰 <b>Ваш кошелёк</b>\n\nБаланс: <b>{balance} ⭐</b> (хватит примерно на {n} вопросов)\n🎁 Бесплатных действий осталось: <b>{free}</b>\n\n"
         "<b>Стоимость действий</b>\n• вопрос ассистенту: {chat} ⭐\n• презентация: {slides} ⭐\n• проверка на ИИ: {detect} ⭐\n• конвертация файла: {convert} ⭐\n\n"
         "Пополнить можно на любую сумму, начиная с 1 ⭐: выберите вариант или нажмите «Другая сумма».",
-        "💰 <b>Sizning hamyoningiz</b>\n\nBalans: <b>{balance} ⭐</b> (taxminan {n} ta savolga yetadi)\n\n"
+        "💰 <b>Sizning hamyoningiz</b>\n\nBalans: <b>{balance} ⭐</b> (taxminan {n} ta savolga yetadi)\n🎁 Qolgan bepul harakatlar: <b>{free}</b>\n\n"
         "<b>Harakatlar narxi</b>\n• yordamchiga savol: {chat} ⭐\n• taqdimot: {slides} ⭐\n• AI tekshiruvi: {detect} ⭐\n• faylni konvertatsiya qilish: {convert} ⭐\n\n"
         "Hamyonni istalgan summaga to'ldirish mumkin, 1 ⭐ dan boshlab: variantni tanlang yoki «Boshqa summa» ni bosing.",
-        "💰 <b>Your wallet</b>\n\nBalance: <b>{balance} ⭐</b> (enough for about {n} questions)\n\n"
+        "💰 <b>Your wallet</b>\n\nBalance: <b>{balance} ⭐</b> (enough for about {n} questions)\n🎁 Free actions left: <b>{free}</b>\n\n"
         "<b>Cost of actions</b>\n• a question to the assistant: {chat} ⭐\n• a presentation: {slides} ⭐\n• an AI check: {detect} ⭐\n• a file conversion: {convert} ⭐\n\n"
         "You can top up any amount, starting from 1 ⭐: pick an option or tap «Other amount»."),
+    "free_line": ("🎁 бесплатное действие, осталось: {left}", "🎁 bepul harakat, qoldi: {left}", "🎁 free action, left: {left}"),
     "top_other": ("✏️ Другая сумма", "✏️ Boshqa summa", "✏️ Other amount"),
     "top_ask": ("Напишите, на сколько звёзд пополнить кошелёк: любое целое число от 1 до {max}. Отмена: /cancel",
                 "Hamyonni necha yulduzga to'ldirishni yozing: 1 dan {max} gacha istalgan butun son. Bekor qilish: /cancel",

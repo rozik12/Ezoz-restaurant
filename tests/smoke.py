@@ -1,7 +1,7 @@
 """End-to-end check against fake Telegram and fake Claude: python tests/smoke.py"""
 import asyncio, io, os, sys, tempfile, time
 os.environ.update(BOT_TOKEN="123456:TEST", ANTHROPIC_API_KEY="test", DB_PATH=tempfile.mktemp(suffix=".db"),
-                  ADMIN_IDS="900", ADMIN_USERNAMES="ArtyomGlupech", CARD_NUMBER="8600 1234 5678 9012", CARD_HOLDER="TEST HOLDER", UZS_PER_STAR="1200", PAYMENT_PROVIDER_TOKEN="123:TEST:abc")
+                  ADMIN_IDS="900", ADMIN_USERNAMES="ArtyomGlupech", CARD_NUMBER="8600 1234 5678 9012", CARD_HOLDER="TEST HOLDER", UZS_PER_STAR="1200", FREE_ACTIONS="0", PAYMENT_PROVIDER_TOKEN="123:TEST:abc")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from types import SimpleNamespace as NS
 from aiogram import Bot, Dispatcher
@@ -247,6 +247,18 @@ async def body(s, db):
     r = await feed(cb(900, "bc:go")); done = [x for x in texts(r) if "Готово" in x]; assert done; print("broadcast:", done[0])
     sent = [c for c in r if c[0] == "copyMessage"]; assert len(sent) >= 4 and all(c[1]["from_chat_id"] == 900 for c in sent)
     r = await feed(msg(900, "/admins")); assert "artyomglupech" in texts(r)[0] or "777" in texts(r)[0]; print("admins list ok")
+    # ---------- three free actions, then the wallet ----------
+    object.__setattr__(s, "free_actions", 3)                      # the rest of the run assumed a paid-only wallet
+    F = 600
+    r = await feed(msg(F, "/start")); await feed(cb(F, "lang:ru"))
+    r = await feed(msg(F, "/start")); assert any("Бесплатных действий для начала: <b>3</b>" in x for x in texts(r)); print("welcome mentions the 3 free actions")
+    r = await feed(msg(F, "/wallet")); assert "Бесплатных действий осталось: <b>3</b>" in texts(r)[0]
+    r = await feed(msg(F, "Первый вопрос")); assert "🎁 бесплатное действие, осталось: 2" in texts(r)[0] and await db.balance(F) == 0; print("1st action free:", texts(r)[0][-45:].replace("\n", " "))
+    before = await db.free_used(F); r = await feed(msg(F, "ОШИБКА")); assert await db.free_used(F) == before, "a failed free action must stay available"; print("failed free action is given back")
+    r = await feed(msg(F, "Второй вопрос")); assert "осталось: 1" in texts(r)[0]
+    await feed(msg(F, "📊 Слайды")); r = await feed(msg(F, "Цифровой маркетинг")); assert any(c[0] == "sendDocument" and "осталось: 0" in c[1]["caption"] for c in r); print("3rd action (slides) free too")
+    r = await feed(msg(F, "Четвёртый вопрос")); assert "Недостаточно звёзд" in texts(r)[0] and await db.balance(F) == 0; print("4th action needs Stars:", texts(r)[0][:40])
+    await db.credit(F, 50, "admin"); r = await feed(msg(F, "Четвёртый вопрос")); assert "−50 ⭐ · баланс: 0 ⭐" in texts(r)[0]; print("paid from the wallet after the free ones")
     print("ALL OK")
 async def runner():
     try:

@@ -48,13 +48,13 @@ async def send_answer(message: Message, text: str, footer: str = "") -> None:
 
 # =========================== start, language, help, menu ===========================
 @router.message(CommandStart())
-async def start(message: Message, db: Database, lang: str) -> None:
+async def start(message: Message, db: Database, settings: Settings, lang: str) -> None:
     u = message.from_user
     await db.touch_user(u.id, u.username, u.full_name)
     if await db.get_lang(u.id) is None:                       # first visit: ask for the language
         await message.answer(t(DEFAULT_LANG, "choose_lang"), reply_markup=kb.lang_choice())
         return
-    await message.answer(t(lang, "welcome"), reply_markup=kb.main_menu(lang))
+    await message.answer(t(lang, "welcome", free=settings.free_actions), reply_markup=kb.main_menu(lang))
 
 
 @router.message(Command("lang"))
@@ -64,7 +64,7 @@ async def lang_cmd(message: Message) -> None:
 
 
 @router.callback_query(F.data.startswith("lang:"))
-async def lang_pick(call: CallbackQuery, db: Database) -> None:
+async def lang_pick(call: CallbackQuery, db: Database, settings: Settings) -> None:
     code = call.data.split(":")[1]
     if code not in LANGS:
         await call.answer()
@@ -76,7 +76,7 @@ async def lang_pick(call: CallbackQuery, db: Database) -> None:
         await call.message.delete()
     except TelegramBadRequest:
         pass
-    await call.message.answer(t(code, "welcome"), reply_markup=kb.main_menu(code))
+    await call.message.answer(t(code, "welcome", free=settings.free_actions), reply_markup=kb.main_menu(code))
 
 
 @router.message(Command("help"))
@@ -136,14 +136,15 @@ async def run_assistant(message: Message, db: Database, ai: Assistant, settings:
         await message.answer(t(lang, "busy"))
         return
     async with lock:
-        if not await spend(message, db, settings, uid, "chat", lang):
+        kind = await spend(message, db, settings, uid, "chat", lang)
+        if not kind:
             return
         mode = await db.get_mode(uid)
         try:
             async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
                 answer, truncated = await ai.ask(uid, text, mode=mode, paid=True, lang=lang, stored=stored)
         except Exception as e:                                # the action did not happen, so the Stars go back
-            await give_back(db, settings, uid, "chat")
+            await give_back(db, settings, uid, "chat", kind)
             if isinstance(e, AssistantError):
                 await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}\n{t(lang, 'refunded')}")
             else:
@@ -153,7 +154,7 @@ async def run_assistant(message: Message, db: Database, ai: Assistant, settings:
         await db.count_use(uid)
         if truncated:
             answer += t(lang, "truncated")
-        await send_answer(message, answer, footer=await spent_line(db, settings, uid, "chat", lang))
+        await send_answer(message, answer, footer=await spent_line(db, settings, uid, "chat", lang, kind))
 
 
 @router.message(F.document)

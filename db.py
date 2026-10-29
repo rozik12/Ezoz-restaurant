@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     mode       TEXT NOT NULL DEFAULT 'general',
     paid_until REAL NOT NULL DEFAULT 0,
     balance    INTEGER NOT NULL DEFAULT 0,
+    free_used  INTEGER NOT NULL DEFAULT 0,
     created    REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS messages (
@@ -100,7 +101,7 @@ class Database:
         await self._db.executescript(SCHEMA)
         async with self._db.execute("PRAGMA table_info(users)") as cur:
             cols = {r["name"] for r in await cur.fetchall()}
-        for col, ddl in (("lang", "TEXT"), ("banned", "INTEGER NOT NULL DEFAULT 0"), ("last_seen", "REAL NOT NULL DEFAULT 0"), ("balance", "INTEGER NOT NULL DEFAULT 0")):
+        for col, ddl in (("lang", "TEXT"), ("banned", "INTEGER NOT NULL DEFAULT 0"), ("last_seen", "REAL NOT NULL DEFAULT 0"), ("balance", "INTEGER NOT NULL DEFAULT 0"), ("free_used", "INTEGER NOT NULL DEFAULT 0")):
             if col not in cols:                               # upgrade a database created by an older version
                 await self._db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
         async with self._db.execute("PRAGMA table_info(card_payments)") as cur:
@@ -145,6 +146,19 @@ class Database:
     # ---------- wallet (Telegram Stars) ----------
     async def balance(self, user_id: int) -> int:
         return await self._scalar("SELECT balance FROM users WHERE user_id=?", (user_id,))
+
+    async def free_used(self, user_id: int) -> int:
+        return await self._scalar("SELECT free_used FROM users WHERE user_id=?", (user_id,))
+
+    async def use_free(self, user_id: int, allowed: int) -> bool:
+        """Takes one of the user's free actions, atomically; False when they are used up."""
+        cur = await self.db.execute("UPDATE users SET free_used=free_used+1 WHERE user_id=? AND free_used<?", (user_id, allowed))
+        await self.db.commit()
+        return cur.rowcount == 1
+
+    async def return_free(self, user_id: int) -> None:
+        await self.db.execute("UPDATE users SET free_used=MAX(free_used-1,0) WHERE user_id=?", (user_id,))
+        await self.db.commit()
 
     async def credit(self, user_id: int, stars: int, kind: str, note: str = "") -> int:
         """Adds Stars (works for a user who has not opened the bot yet); returns the new balance."""

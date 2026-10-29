@@ -31,7 +31,8 @@ python tests/smoke.py    # end-to-end check on fake Telegram and fake Claude
 
 ## Wallet
 
-Every action is paid from the user's wallet in Telegram Stars; there are no subscriptions and no daily limits.
+Every user gets `FREE_ACTIONS` free actions once (3 by default, any mix of questions, slides, checks and conversions); after that every action is paid
+from the wallet in Telegram Stars. There are no subscriptions and no daily limits.
 By default each action costs 50 ⭐ (`PRICE_CHAT`, `PRICE_SLIDES`, `PRICE_DETECT`, `PRICE_CONVERT`): a question to the assistant,
 a presentation, an AI check, a file conversion. If an action fails, the Stars are returned automatically.
 

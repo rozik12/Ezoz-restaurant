@@ -38,23 +38,30 @@ def fmt(n: int) -> str:
 
 
 # ---------------------------------------------------------------- charging, used by the other routers
-async def spend(target: Message, db: Database, settings: Settings, uid: int, action: str, lang: str) -> bool:
-    """Takes the price of an action from the wallet. When the balance is short, offers the top-up and returns False."""
+async def spend(target: Message, db: Database, settings: Settings, uid: int, action: str, lang: str) -> str | None:
+    """Pays for one action: a free action while the user has any left, then the wallet.
+    Returns "free" or "paid", or None after offering the top-up when the balance is short."""
+    if await db.use_free(uid, settings.free_actions):
+        return "free"
     price = settings.prices[action]
     if price <= 0 or await db.charge(uid, price, "charge", action):
-        return True
+        return "paid"
     bal = await db.balance(uid)
     await target.answer(t(lang, "need_funds", price=price, balance=bal), reply_markup=kb.topup_markup(lang, settings, missing=price - bal))
-    return False
+    return None
 
 
-async def give_back(db: Database, settings: Settings, uid: int, action: str) -> None:
-    """Returns the price of an action that failed."""
-    if settings.prices[action] > 0:
+async def give_back(db: Database, settings: Settings, uid: int, action: str, kind: str = "paid") -> None:
+    """Returns what an action that failed had cost."""
+    if kind == "free":
+        await db.return_free(uid)
+    elif settings.prices[action] > 0:
         await db.credit(uid, settings.prices[action], "refund", action)
 
 
-async def spent_line(db: Database, settings: Settings, uid: int, action: str, lang: str) -> str:
+async def spent_line(db: Database, settings: Settings, uid: int, action: str, lang: str, kind: str = "paid") -> str:
+    if kind == "free":
+        return t(lang, "free_line", left=max(0, settings.free_actions - await db.free_used(uid)))
     price = settings.prices[action]
     return t(lang, "spent_line", n=price, balance=await db.balance(uid)) if price > 0 else ""
 
@@ -68,7 +75,8 @@ async def wallet(message: Message, state: FSMContext, db: Database, settings: Se
     await state.clear()
     bal = await db.balance(message.from_user.id)
     p = settings.prices
-    await message.answer(t(lang, "wallet_text", balance=bal, n=bal // p["chat"] if p["chat"] else bal,
+    free = max(0, settings.free_actions - await db.free_used(message.from_user.id))
+    await message.answer(t(lang, "wallet_text", balance=bal, n=bal // p["chat"] if p["chat"] else bal, free=free,
                            chat=p["chat"], slides=p["slides"], detect=p["detect"], convert=p["convert"]),
                          reply_markup=kb.topup_markup(lang, settings))
 

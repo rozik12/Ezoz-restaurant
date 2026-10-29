@@ -110,7 +110,8 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
         await message.answer(t(lang, "slides_short"))
         return
     uid = message.from_user.id
-    if not await spend(message, db, settings, uid, "slides", lang):
+    kind = await spend(message, db, settings, uid, "slides", lang)
+    if not kind:
         await state.clear()
         return
     m = re.search(r"(\d{1,2})\s*(?:слайд|slayd|slide|sl\b)", topic.lower())
@@ -136,12 +137,12 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
                 log.warning("Slides: refinement skipped")
             data = await asyncio.to_thread(sl.build_pptx, deck, "modern", lang)
     except AssistantError as e:
-        await give_back(db, settings, uid, "slides")
+        await give_back(db, settings, uid, "slides", kind)
         await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}\n{t(lang, 'refunded')}")
         return
     except Exception:
         log.exception("Slides failed")
-        await give_back(db, settings, uid, "slides")
+        await give_back(db, settings, uid, "slides", kind)
         await message.answer(f"{t(lang, 'slides_fail')}\n{t(lang, 'refunded')}")
         return
     finally:
@@ -150,7 +151,7 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
         except TelegramBadRequest:
             pass
     await db.count_tool(uid, "slides")
-    cost = await spent_line(db, settings, uid, "slides", lang)
+    cost = await spent_line(db, settings, uid, "slides", lang, kind)
     name = re.sub(r"[^\w\- ]+", "", deck.title).strip()[:40].replace(" ", "_") or "presentation"
     if len(_decks) >= MAX_DECKS:
         _decks.pop(next(iter(_decks)))
@@ -185,7 +186,8 @@ async def check_ai(message: Message, state: FSMContext, bot: Bot, db: Database, 
         await message.answer(t(lang, "detect_short", n=detect.MIN_CHARS))
         return
     uid = message.from_user.id
-    if not await spend(message, db, settings, uid, "detect", lang):
+    kind = await spend(message, db, settings, uid, "detect", lang)
+    if not kind:
         await state.clear()
         return
     text = text[:detect.MAX_CHARS]
@@ -196,12 +198,12 @@ async def check_ai(message: Message, state: FSMContext, bot: Bot, db: Database, 
             raw = await ai.complete(detect.prompt(lang, st), text, 1500)
             res = detect.parse(raw)
     except AssistantError as e:
-        await give_back(db, settings, uid, "detect")
+        await give_back(db, settings, uid, "detect", kind)
         await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}\n{t(lang, 'refunded')}")
         return
     except Exception:
         log.exception("AI check failed")
-        await give_back(db, settings, uid, "detect")
+        await give_back(db, settings, uid, "detect", kind)
         await message.answer(f"{t(lang, 'detect_fail')}\n{t(lang, 'refunded')}")
         return
     finally:
@@ -221,7 +223,7 @@ async def check_ai(message: Message, state: FSMContext, bot: Bot, db: Database, 
     if res["advice"]:
         parts.append(t(lang, "detect_advice") + "\n" + "\n".join("• " + html.escape(x) for x in res["advice"]))
     parts.append(t(lang, "detect_note"))
-    cost = await spent_line(db, settings, uid, "detect", lang)
+    cost = await spent_line(db, settings, uid, "detect", lang, kind)
     if cost:
         parts.append(f"<i>{cost}</i>")
     await message.answer("\n\n".join(parts), reply_markup=kb.main_menu(lang))
@@ -255,21 +257,22 @@ async def do_convert(call: CallbackQuery, state: FSMContext, bot: Bot, db: Datab
         return
     uid = call.from_user.id
     await call.answer(t(lang, "convert_working"))
-    if not await spend(call.message, db, settings, uid, "convert", lang):
+    kind = await spend(call.message, db, settings, uid, "convert", lang)
+    if not kind:
         return
     try:
         buf = await bot.download(data["file_id"])
         name, out = await asyncio.to_thread(convert, data["name"], buf.read(), call.data.split(":")[1])
     except ConvertError as e:
-        await give_back(db, settings, uid, "convert")
+        await give_back(db, settings, uid, "convert", kind)
         await call.message.answer(f"⚠️ {t(lang, 'conv_err_' + e.key)}\n{t(lang, 'refunded')}")
         return
     except Exception:
         log.exception("Conversion failed")
-        await give_back(db, settings, uid, "convert")
+        await give_back(db, settings, uid, "convert", kind)
         await call.message.answer(f"⚠️ {t(lang, 'convert_fail')}\n{t(lang, 'refunded')}")
         return
     await db.count_tool(uid, "convert")
-    cost = await spent_line(db, settings, uid, "convert", lang)
+    cost = await spent_line(db, settings, uid, "convert", lang, kind)
     await call.message.answer_document(BufferedInputFile(out, filename=name),
                                        caption=t(lang, "convert_done", name=html.escape(name)) + (f"\n{cost}" if cost else ""))
