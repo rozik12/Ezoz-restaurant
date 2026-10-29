@@ -13,6 +13,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import keyboards as kb
+from filters import NotAdminView
 from config import Settings
 from db import Database
 from i18n import labels, t
@@ -21,6 +22,7 @@ log = logging.getLogger(__name__)
 
 router = Router(name="support")
 router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.message.filter(NotAdminView())
 
 MAX_OPEN_PER_USER = 3
 CANCEL = labels("cancel_btn")

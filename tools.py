@@ -18,6 +18,7 @@ from aiogram.utils.chat_action import ChatActionSender
 
 import detect
 import keyboards as kb
+from filters import NotAdminView
 import slides as sl
 from config import Settings
 from convert import TARGETS, ConvertError, convert, ext_of
@@ -31,6 +32,8 @@ log = logging.getLogger(__name__)
 
 router = Router(name="tools")
 router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.message.filter(NotAdminView())
+router.callback_query.filter(NotAdminView())
 
 CANCEL = labels("cancel_btn")
 

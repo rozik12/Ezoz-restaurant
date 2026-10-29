@@ -9,6 +9,9 @@ from db import Database
 from i18n import DEFAULT_LANG, t
 
 
+USER_MODE: set[int] = set()          # administrators who switched to the ordinary user's view (kept in memory only)
+
+
 class Access(BaseMiddleware):
     def __init__(self, db: Database, settings: Settings) -> None:
         self.db, self.s = db, settings
@@ -34,5 +37,5 @@ class Access(BaseMiddleware):
             elif isinstance(event, Message):
                 await event.answer(t(lang, "banned"))
             return None
-        data.update(lang=lang, is_admin=is_admin, is_owner=owner)
+        data.update(lang=lang, is_admin=is_admin, is_owner=owner, admin_view=is_admin and user.id not in USER_MODE)
         return await handler(event, data)

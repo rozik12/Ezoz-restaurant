@@ -46,6 +46,16 @@ a presentation, an AI check, a file conversion. If an action fails, the Stars ar
 * **Admins:** `/grant ID stars` credits a wallet (negative debits), the user card has quick buttons, `/stats` shows balances, top-ups and spending.
   `WELCOME_BONUS` gives new users free Stars (0 by default).
 
+## Admin
+
+Administrators get their own interface: `/admin` (or `/start`) shows a menu with statistics, income reports (24 h / 7 d / 30 d / all time), top customers,
+user list and cards, payments (receipts waiting for a decision with *Credit / Reject* buttons, latest top-ups), support tickets, broadcast, settings and the admin list.
+The ordinary user features (writing modes, tools, wallet) are hidden from the admin view; "👤 Как пользователь" shows the bot through a customer's eyes and `/admin` returns.
+
+* **Settings** (`/settings`): prices of the four actions, free actions, welcome bonus, price of one Star in so'm, card number and holder. Changes apply at once and are
+  stored in the database, so they survive restarts and override the environment variables.
+* **Owners only:** `/backup` (consistent copy of the database), `/export` (clients as CSV), `/addadmin`, `/rmadmin`.
+
 ## Tools
 
 * **📊 Slides** (`/slides`): a topic (optionally "12 slides") or a file becomes a ready `.pptx` with speaker notes, in three styles. No invented sources.

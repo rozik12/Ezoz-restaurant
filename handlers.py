@@ -13,6 +13,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.utils.chat_action import ChatActionSender
 
 import keyboards as kb
+from filters import NotAdminView
 from config import Settings
 from db import Database
 from docs import MAX_FILE_BYTES, UnsupportedFile, extract_text
@@ -25,6 +26,8 @@ log = logging.getLogger(__name__)
 
 router = Router(name="main")
 router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.message.filter(NotAdminView())
+router.callback_query.filter(NotAdminView())
 
 MAX_INPUT_CHARS = 12_000
 _locks: dict[int, asyncio.Lock] = {}          # one running request per user, so history stays in order

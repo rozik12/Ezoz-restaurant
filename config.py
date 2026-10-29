@@ -18,8 +18,8 @@ def _ids(name: str) -> tuple[int, ...]:
     return tuple(int(x) for x in os.getenv(name, "").replace(" ", "").split(",") if x.isdigit())
 
 
-@dataclass(frozen=True)
-class Settings:
+@dataclass
+class Settings:                                  # mutable: administrators change prices and payment details from the bot
     bot_token: str
     gemini_key: str
     gemini_model: str

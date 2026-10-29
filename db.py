@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS card_payments (
     user_id INTEGER NOT NULL,
     status  TEXT NOT NULL DEFAULT 'pending',
     stars   INTEGER NOT NULL DEFAULT 0,
+    chat_id INTEGER NOT NULL DEFAULT 0,
+    msg_id  INTEGER NOT NULL DEFAULT 0,
     created REAL NOT NULL,
     decided REAL
 );
@@ -55,6 +57,10 @@ CREATE TABLE IF NOT EXISTS wallet_tx (
     ts      REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallet_tx(user_id, id);
+CREATE TABLE IF NOT EXISTS kv (
+    k TEXT PRIMARY KEY,
+    v TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS admins (
     user_id  INTEGER PRIMARY KEY,
     username TEXT,
@@ -105,8 +111,10 @@ class Database:
             if col not in cols:                               # upgrade a database created by an older version
                 await self._db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
         async with self._db.execute("PRAGMA table_info(card_payments)") as cur:
-            if "stars" not in {r["name"] for r in await cur.fetchall()}:
-                await self._db.execute("ALTER TABLE card_payments ADD COLUMN stars INTEGER NOT NULL DEFAULT 0")
+            have = {r["name"] for r in await cur.fetchall()}
+        for col in ("stars", "chat_id", "msg_id"):
+            if col not in have:
+                await self._db.execute(f"ALTER TABLE card_payments ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
         await self._db.commit()
 
     async def close(self) -> None:
@@ -329,8 +337,9 @@ class Database:
         return v or None
 
     # ---------- payments by card transfer ----------
-    async def create_card_payment(self, user_id: int, stars: int) -> int:
-        cur = await self.db.execute("INSERT INTO card_payments(user_id, stars, created) VALUES(?,?,?)", (user_id, stars, time.time()))
+    async def create_card_payment(self, user_id: int, stars: int, chat_id: int = 0, msg_id: int = 0) -> int:
+        cur = await self.db.execute("INSERT INTO card_payments(user_id, stars, chat_id, msg_id, created) VALUES(?,?,?,?,?)",
+                                    (user_id, stars, chat_id, msg_id, time.time()))
         await self.db.commit()
         return cur.lastrowid
 
@@ -347,6 +356,69 @@ class Database:
         cur = await self.db.execute("UPDATE card_payments SET status=?, decided=? WHERE id=? AND status='pending'", (status, time.time(), pid))
         await self.db.commit()
         return cur.rowcount == 1
+
+    async def pending_card_payments(self, limit: int = 10) -> list[dict]:
+        async with self.db.execute(
+                "SELECT c.*, u.name, u.username FROM card_payments c LEFT JOIN users u ON u.user_id=c.user_id "
+                "WHERE c.status='pending' ORDER BY c.id LIMIT ?", (limit,)) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+    # ---------- settings stored in the database ----------
+    async def get_kv(self, key: str) -> str | None:
+        async with self.db.execute("SELECT v FROM kv WHERE k=?", (key,)) as cur:
+            row = await cur.fetchone()
+        return row["v"] if row else None
+
+    async def set_kv(self, key: str, value: str) -> None:
+        await self.db.execute("INSERT INTO kv(k, v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", (key, value))
+        await self.db.commit()
+
+    # ---------- reports ----------
+    async def report(self, days: int) -> dict:
+        """Money and activity over the last `days` days (0 = all time)."""
+        since = time.time() - days * 86400 if days else 0
+        return {
+            "stars_in": await self._scalar("SELECT COALESCE(SUM(stars),0) FROM payments WHERE ts>=?", (since,)),
+            "stars_payments": await self._scalar("SELECT COUNT(*) FROM payments WHERE ts>=? AND stars>0", (since,)),
+            "card_stars": await self._scalar("SELECT COALESCE(SUM(stars),0) FROM card_payments WHERE status='approved' AND decided>=?", (since,)),
+            "card_payments": await self._scalar("SELECT COUNT(*) FROM card_payments WHERE status='approved' AND decided>=?", (since,)),
+            "uzs_stars": await self._scalar("SELECT COALESCE(SUM(delta),0) FROM wallet_tx WHERE kind='topup_uzs' AND ts>=?", (since,)),
+            "spent": await self._scalar("SELECT COALESCE(-SUM(delta),0) FROM wallet_tx WHERE kind='charge' AND ts>=?", (since,)),
+            "actions": await self._scalar("SELECT COUNT(*) FROM wallet_tx WHERE kind='charge' AND ts>=?", (since,)),
+            "payers": await self._scalar("SELECT COUNT(DISTINCT user_id) FROM wallet_tx WHERE kind IN ('topup','topup_uzs','card') AND ts>=?", (since,)),
+            "new_users": await self._scalar("SELECT COUNT(*) FROM users WHERE created>=?", (since,)),
+            "active_users": await self._scalar("SELECT COUNT(*) FROM users WHERE last_seen>=?", (since,)),
+            "by_action": {r["note"]: r["n"] for r in await self._rows(
+                "SELECT note, COUNT(*) AS n FROM wallet_tx WHERE kind='charge' AND ts>=? GROUP BY note", (since,))},
+        }
+
+    async def _rows(self, sql: str, args: tuple = ()) -> list:
+        async with self.db.execute(sql, args) as cur:
+            return list(await cur.fetchall())
+
+    async def top_spenders(self, limit: int = 10) -> list[dict]:
+        rows = await self._rows(
+            "SELECT w.user_id, SUM(-w.delta) AS spent, COUNT(*) AS actions, u.name, u.username, u.balance "
+            "FROM wallet_tx w LEFT JOIN users u ON u.user_id=w.user_id WHERE w.kind='charge' "
+            "GROUP BY w.user_id ORDER BY spent DESC LIMIT ?", (limit,))
+        return [dict(r) for r in rows]
+
+    async def recent_topups(self, limit: int = 10) -> list[dict]:
+        rows = await self._rows(
+            "SELECT w.delta, w.kind, w.ts, w.user_id, u.name, u.username FROM wallet_tx w LEFT JOIN users u ON u.user_id=w.user_id "
+            "WHERE w.kind IN ('topup','topup_uzs','card') ORDER BY w.id DESC LIMIT ?", (limit,))
+        return [dict(r) for r in rows]
+
+    async def export_users(self) -> list[dict]:
+        rows = await self._rows(
+            "SELECT u.user_id, u.username, u.name, u.lang, u.balance, u.banned, u.created, u.last_seen, "
+            "COALESCE((SELECT SUM(-delta) FROM wallet_tx WHERE user_id=u.user_id AND kind='charge'),0) AS spent "
+            "FROM users u ORDER BY u.created")
+        return [dict(r) for r in rows]
+
+    async def backup(self, path: str) -> None:
+        """A consistent copy of the whole database (safe while the bot is running)."""
+        await self.db.execute("VACUUM INTO ?", (path,))
 
     # ---------- stats ----------
     async def stats(self) -> dict:

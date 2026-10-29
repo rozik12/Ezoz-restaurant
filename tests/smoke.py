@@ -13,6 +13,8 @@ from config import Settings
 from db import Database
 from handlers import router
 import admin, support, tools
+import settings_store as ss
+from access import USER_MODE
 import wallet as walletmod
 from access import Access
 from llm import Assistant
@@ -84,7 +86,7 @@ async def body(s, db):
     ai = Assistant(s, db); fake = FakeMessages(); ai.client = NS(messages=fake)
     bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s)
     acc = Access(db, s); dp.message.outer_middleware(acc); dp.callback_query.outer_middleware(acc)
-    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(walletmod.router); dp.include_router(router)
+    dp.include_router(admin.gate); dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(walletmod.router); dp.include_router(router)
     async def feed(d):
         calls.clear(); await dp.feed_update(bot, Update.model_validate(d, context={"bot": bot})); return list(calls)
     texts = lambda r: [c[1].get("text", "") for c in r if c[0] == "sendMessage"]
@@ -250,6 +252,45 @@ async def body(s, db):
     r = await feed(cb(900, "bc:go")); done = [x for x in texts(r) if "Готово" in x]; assert done; print("broadcast:", done[0])
     sent = [c for c in r if c[0] == "copyMessage"]; assert len(sent) >= 4 and all(c[1]["from_chat_id"] == 900 for c in sent)
     r = await feed(msg(900, "/admins")); assert "artyomglupech" in texts(r)[0] or "777" in texts(r)[0]; print("admins list ok")
+    # ---------- the admin's own interface ----------
+    r = await feed(msg(900, "/start")); assert "Админка" in texts(r)[0] and len(r[0][1]["reply_markup"]["keyboard"]) == 6
+    assert "✍️ Писать работу" not in str(r[0][1]["reply_markup"]); print("admin /start shows the admin panel, not the user's menu")
+    n_calls, bal_before = len(fake.calls), await db.balance(900)
+    for text_ in ("✍️ Писать работу", "/slides", "/wallet", "/support", "Привет, расскажи про маркетинг", "🔁 Конвертер", "/guide"):
+        r = await feed(msg(900, text_)); assert "Это админка" in texts(r)[0], (text_, texts(r))
+    r = await feed(cb(900, "top:100")); r = await feed(cb(900, "lang:en"))
+    assert len(fake.calls) == n_calls and await db.balance(900) == bal_before; print("user features are hidden from the admin: no AI call, no charge")
+    r = await feed(msg(900, "📈 Доход")); rep = texts(r)[0]; assert "Доход за 7 дней" in rep and "Потрачено клиентами" in rep; print("report:", rep.replace("\n", " | ")[:150])
+    r = await feed(cb(900, "adm:report:0")); assert any(c[0] == "editMessageText" and "всё время" in c[1]["text"] for c in r); print("report period switch ok")
+    r = await feed(msg(900, "/report 30")); assert "30 дней" in texts(r)[0]
+    r = await feed(msg(900, "🏆 Топ клиентов")); assert "Топ клиентов" in texts(r)[0] and "потратил" in texts(r)[0]; print("top:", texts(r)[0].replace("\n", " | ")[:110])
+    pid = await db.create_card_payment(P, 10, P, 4321)
+    r = await feed(msg(900, "💳 Оплаты")); assert any(f"Заявка #{pid}" in x for x in texts(r)) and any(c[0] == "copyMessage" and c[1]["message_id"] == 4321 for c in r) and any("Последние пополнения" in x for x in texts(r)); print("payments: pending receipt re-sent with its buttons, recent top-ups listed")
+    r = await feed(cb(900, f"cp:ok:{pid}")); assert await db.balance(P) == 45
+    # settings
+    r = await feed(msg(900, "⚙️ Настройки")); assert "Цена вопроса" in texts(r)[0] and "50" in texts(r)[0]
+    r = await feed(cb(900, "set:price_chat")); r = await feed(msg(900, "abc")); assert "Нужно целое число" in texts(r)[0]
+    r = await feed(msg(900, "70")); assert s.prices["chat"] == 70 and await db.get_kv("set:price_chat") == "70" and "Сохранено" in texts(r)[0]; print("price changed to 70 at once and stored")
+    r = await feed(msg(P, "Вопрос")); assert "narxi 70 ⭐, balansda 45" in texts(r)[0], texts(r); print("users now pay the new price:", texts(r)[0][:55])
+    s2 = Settings.load(); assert s2.prices["chat"] == 50; await ss.load(db, s2); assert s2.prices["chat"] == 70; print("setting survives a restart")
+    await feed(cb(900, "set:price_chat")); await feed(msg(900, "50")); assert s.prices["chat"] == 50
+    await feed(cb(900, "set:card_number")); await feed(msg(900, "-")); assert not s.card_ready; r = await feed(msg(P, "/wallet")); assert "topm:card" not in str(r[0][1]["reply_markup"]); print("card cleared from the bot: the card button disappears")
+    await feed(cb(900, "set:card_number")); await feed(msg(900, "8600 1111 2222 3333")); assert s.card_ready and s.card_number == "8600 1111 2222 3333"; print("card number changed from the bot")
+    # a menu tap ends a half-typed reply instead of sending it to the client
+    tid = await db.create_ticket(P, "help"); await feed(cb(900, f"tk:reply:{tid}")); sent_before = len([c for c in calls])
+    r = await feed(msg(900, "📊 Статистика")); assert "Статистика" in texts(r)[0] and not any(c[1].get("chat_id") == P for c in r); print("menu tap leaves the reply dialog, nothing sent to the client")
+    r = await feed(msg(900, "обычный текст")); assert "Это админка" in texts(r)[0] and not any(c[1].get("chat_id") == P for c in r)
+    # backup / export: owners only
+    r = await feed(msg(900, "/backup")); assert any(c[0] == "sendDocument" for c in r), r; print("owner gets the database backup")
+    r = await feed(msg(900, "/export")); d = [c for c in r if c[0] == "sendDocument"]; assert d; print("owner gets clients.csv")
+    r = await feed(msg(777, "/backup")); assert "только владелец" in texts(r)[0] and not any(c[0] == "sendDocument" for c in r)
+    r = await feed(msg(777, "/export")); assert "только владелец" in texts(r)[0]; print("other admins cannot download the database")
+    # the user's view for testing, and back
+    r = await feed(msg(900, "👤 Как пользователь")); assert "/admin" in texts(r)[0] and len(r[0][1]["reply_markup"]["keyboard"]) == 6 and "✍️" in str(r[0][1]["reply_markup"])
+    r = await feed(msg(900, "/wallet")); assert "кошелёк" in texts(r)[0].lower(); print("admin sees the user's view on request")
+    r = await feed(msg(900, "/admin")); assert "Админка" in texts(r)[0] and 900 not in USER_MODE
+    r = await feed(msg(900, "/wallet")); assert "Это админка" in texts(r)[0]; print("/admin brings the admin back")
+
     # ---------- three free actions, then the wallet ----------
     object.__setattr__(s, "free_actions", 3)                      # the rest of the run assumed a paid-only wallet
     F = 600

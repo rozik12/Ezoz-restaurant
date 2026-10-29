@@ -11,6 +11,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
 import admin
+import settings_store
 import wallet
 import support
 import tools
@@ -51,6 +52,7 @@ async def main() -> None:
     settings = Settings.load()
     db = Database(settings.db_path)
     await db.connect()
+    await settings_store.load(db, settings)             # prices and payment details edited by administrators
     ai = Assistant(settings, db)
     if not ai.ready:
         logging.warning("No AI key (GEMINI_API_KEY, DEEPSEEK_API_KEY or ANTHROPIC_API_KEY) is set: the bot starts but cannot answer questions yet")
@@ -60,6 +62,7 @@ async def main() -> None:
     access = Access(db, settings)
     dp.message.outer_middleware(access)
     dp.callback_query.outer_middleware(access)
+    dp.include_router(admin.gate)
     dp.include_router(support.router)          # order matters: support dialog and admin tools come before the catch-all handlers
     dp.include_router(admin.router)
     dp.include_router(tools.router)

@@ -14,6 +14,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton, InlineKeyboardMa
                            PreCheckoutQuery)
 
 import keyboards as kb
+from filters import NotAdminView
 from config import Settings
 from db import Database
 from i18n import DEFAULT_LANG, labels, t
@@ -23,6 +24,8 @@ log = logging.getLogger(__name__)
 
 router = Router(name="wallet")
 router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.message.filter(NotAdminView())
+router.callback_query.filter(NotAdminView())
 
 CANCEL = labels("cancel_btn")
 NOT_MENU = ~(F.text.startswith("/") | F.text.in_(kb.MENU_LABELS))     # the stored FSM state is stale after clear(), so exclude explicitly
@@ -231,7 +234,7 @@ async def receipt(message: Message, state: FSMContext, bot: Bot, db: Database, s
     if not stars:
         return
     u = message.from_user
-    pid = await db.create_card_payment(u.id, stars)
+    pid = await db.create_card_payment(u.id, stars, message.chat.id, message.message_id)
     head = (f"💳 <b>Пополнение картой, заявка #{pid}</b>\n"
             f"От: {html.escape(u.full_name)}" + (f" (@{html.escape(u.username)})" if u.username else "") +
             f"\nID: <code>{u.id}</code>\nСумма: {fmt(stars * settings.uzs_per_star)} сум → {stars} ⭐\n"
