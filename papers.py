@@ -137,7 +137,7 @@ def section_user(spec: Spec, title: str, plan: list[Section], i: int) -> str:
     outline = "\n".join(f"{n + 1}. {s.title}: {s.goal}" for n, s in enumerate(plan))
     extra = f"\n\nStudent's requirements and source material (follow them):\n{spec.extra}" if spec.extra else ""
     return (f"Work: {KINDS[spec.kind][0]} titled \"{title}\"\nTopic given by the student: {spec.topic}\n\nFull plan:\n{outline}\n\n"
-            f"Write ONLY section {i + 1}: \"{sec.title}\" (goal: {sec.goal}).\nTarget length: about {sec.words} words.\n"
+            f"Write ONLY section {i + 1}: \"{sec.title}\" (goal: {sec.goal}).\nTarget length: about {round(sec.words * 1.15)} words.\n"
             f"Stay within this section's goal; other sections cover the rest.{extra}")
 
 
@@ -216,12 +216,12 @@ async def generate(ai: Assistant, spec: Spec, progress=None) -> tuple[str, list[
     if any(not s.text for s in plan):
         raise AssistantError("empty")
 
-    for _ in range(2):                                   # bring a short work up to the required range
+    for _ in range(3):                                   # bring a short work up to the required range; models tend to under-deliver length
         total = sum(count_words(s.text) for s in plan)
-        if total >= spec.wmin:
+        if total >= spec.wmin * 1.03:                 # a small margin: Word counts words slightly differently
             break
         await say(len(plan), len(plan), "expand")
-        lacking = spec.target - total
+        lacking = round((spec.target - total) * 1.25)
         weights = [max(s.words - count_words(s.text), 0) for s in plan]
         if sum(weights) == 0:
             weights = [s.words for s in plan]
