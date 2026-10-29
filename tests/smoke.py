@@ -253,8 +253,10 @@ async def body(s, db):
     sent = [c for c in r if c[0] == "copyMessage"]; assert len(sent) >= 4 and all(c[1]["from_chat_id"] == 900 for c in sent)
     r = await feed(msg(900, "/admins")); assert "artyomglupech" in texts(r)[0] or "777" in texts(r)[0]; print("admins list ok")
     # ---------- the admin's own interface ----------
-    r = await feed(msg(900, "/start")); assert "Админка" in texts(r)[0] and len(r[0][1]["reply_markup"]["keyboard"]) == 6
-    assert "✍️ Писать работу" not in str(r[0][1]["reply_markup"]); print("admin /start shows the admin panel, not the user's menu")
+    r = await feed(msg(900, "/start")); first = [c for c in r if c[0] == "sendMessage"][0]
+    assert "Админка" in first[1]["text"] and len(first[1]["reply_markup"]["keyboard"]) == 6 and "✍️ Писать работу" not in str(first[1]["reply_markup"])
+    cmds = [c for c in r if c[0] == "setMyCommands"]; assert cmds and cmds[0][1]["scope"]["type"] == "chat" and any(x["command"] == "report" for x in cmds[0][1]["commands"])
+    print("admin /start shows the admin panel, not the user's menu; admin command list set")
     n_calls, bal_before = len(fake.calls), await db.balance(900)
     for text_ in ("✍️ Писать работу", "/slides", "/wallet", "/support", "Привет, расскажи про маркетинг", "🔁 Конвертер", "/guide"):
         r = await feed(msg(900, text_)); assert "Это админка" in texts(r)[0], (text_, texts(r))
