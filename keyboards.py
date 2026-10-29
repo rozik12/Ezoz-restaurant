@@ -64,6 +64,15 @@ def theme_buttons(lang: str, current: str) -> InlineKeyboardMarkup:
                                                   for n in THEME_ORDER if n != current]])
 
 
-def subscribe_button(label: str, lang: str = "ru") -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=label, callback_data="pay")],
-                                                 [InlineKeyboardButton(text=t(lang, "stars_btn"), callback_data="stars:how")]])
+def subscribe_button(label: str, lang: str = "ru", *, card: bool = False, provider: bool = False) -> InlineKeyboardMarkup:
+    rows = [[InlineKeyboardButton(text=label, callback_data="pay")]]
+    if provider:
+        rows.append([InlineKeyboardButton(text=t(lang, "btn_provider"), callback_data="payp")])
+    if card:
+        rows.append([InlineKeyboardButton(text=t(lang, "btn_card_pay"), callback_data="card:info")])
+    rows.append([InlineKeyboardButton(text=t(lang, "stars_btn"), callback_data="stars:how")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def card_paid_button(lang: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t(lang, "card_paid_btn"), callback_data="card:paid")]])

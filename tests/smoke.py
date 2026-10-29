@@ -1,7 +1,7 @@
 """End-to-end check against fake Telegram and fake Claude: python tests/smoke.py"""
 import asyncio, io, os, sys, tempfile, time
 os.environ.update(BOT_TOKEN="123456:TEST", ANTHROPIC_API_KEY="test", DB_PATH=tempfile.mktemp(suffix=".db"),
-                  ADMIN_IDS="900", ADMIN_USERNAMES="ArtyomGlupech", FREE_DAILY="3", PAID_DAILY="6", PRICE_STARS="300")
+                  ADMIN_IDS="900", ADMIN_USERNAMES="ArtyomGlupech", CARD_NUMBER="8600 1234 5678 9012", CARD_HOLDER="TEST HOLDER", PRICE_UZS="50000", PAYMENT_PROVIDER_TOKEN="123:TEST:abc", FREE_DAILY="3", PAID_DAILY="6", PRICE_STARS="300")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from types import SimpleNamespace as NS
 from aiogram import Bot, Dispatcher
@@ -13,6 +13,7 @@ from config import Settings
 from db import Database
 from handlers import router
 import admin, support, tools
+import pay as paymod
 from access import Access
 from llm import Assistant
 
@@ -83,7 +84,7 @@ async def body(s, db):
     ai = Assistant(s, db); fake = FakeMessages(); ai.client = NS(messages=fake)
     bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s)
     acc = Access(db, s); dp.message.outer_middleware(acc); dp.callback_query.outer_middleware(acc)
-    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(router)
+    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(paymod.router); dp.include_router(router)
     async def feed(d):
         calls.clear(); await dp.feed_update(bot, Update.model_validate(d, context={"bot": bot})); return list(calls)
     texts = lambda r: [c[1].get("text", "") for c in r if c[0] == "sendMessage"]
@@ -187,6 +188,29 @@ async def body(s, db):
     for i in range(3):
         await feed(msg(T, "📊 Slides")); r = await feed(msg(T, f"Topic number {i} here"))
     assert "limit is used up" in texts(r)[0], texts(r); print("tool limit ok:", texts(r)[0][:50])
+
+    # ---------- Uzbek cards: transfer + receipt, and Click/Payme provider ----------
+    P = 500
+    await feed(msg(P, "/start")); await feed(cb(P, "lang:uz"))
+    r = await feed(msg(P, "/subscribe")); cbs = [b["callback_data"] for row in r[0][1]["reply_markup"]["inline_keyboard"] for b in row]
+    assert cbs == ["pay", "payp", "card:info", "stars:how"], cbs; print("subscribe buttons:", cbs)
+    r = await feed(cb(P, "card:info")); card_txt = texts(r)[0]; assert "8600 1234 5678 9012" in card_txt and "50 000 so'm" in card_txt and "TEST HOLDER" in card_txt; print("card instructions (uz) ok")
+    r = await feed(cb(P, "card:paid")); assert "skrinshoti" in texts(r)[0]
+    r = await feed(msg(P, "hello")); assert "skrinshoti yoki rasmi kerak" in texts(r)[0]; print("text instead of receipt rejected")
+    r = await feed(msg(P, photo=[{"file_id": "p", "file_unique_id": "pu", "width": 10, "height": 10}]))
+    to_adm = [c for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == 900 and "Оплата картой" in c[1]["text"]]; assert to_adm and any(c[0] == "copyMessage" for c in r)
+    assert "№1 ariza" in texts(r)[-1] or "ariza" in texts(r)[-1]; print("receipt sent to admin:", to_adm[0][1]["text"].replace("\n", " | ")[:80])
+    r = await feed(cb(P, "card:paid")); assert "tekshiruvda" in texts(r)[0]; print("second request while pending blocked")
+    r = await feed(cb(900, "cp:ok:1")); assert await db.is_paid(P); assert any("tasdiqlandi" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == P); print("approved -> subscription on, user notified in uz")
+    until1 = await db.paid_until(P); r = await feed(cb(900, "cp:ok:1")); assert await db.paid_until(P) == until1; print("double approval does not extend twice")
+    await feed(cb(P, "card:paid")); await feed(msg(P, photo=[{"file_id": "p2", "file_unique_id": "pu2", "width": 10, "height": 10}]))
+    r = await feed(cb(900, "cp:no:2")); assert any("tasdiqlanmadi" in c[1].get("text", "") for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == P); assert await db.paid_until(P) == until1; print("rejected ok")
+    r = await feed(cb(P, "payp")); inv = [c for c in r if c[0] == "sendInvoice"][0][1]; assert inv["currency"] == "UZS" and inv["prices"][0]["amount"] == 5_000_000 and inv["provider_token"].startswith("123:"); print("provider invoice ok:", inv["currency"], inv["prices"][0]["amount"])
+    pre = {"update_id": 9101, "pre_checkout_query": {"id": "q1", "from": user(P), "currency": "UZS", "total_amount": 5_000_000, "invoice_payload": f"sub:{P}"}}
+    r = await feed(pre); assert [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"] == [True]
+    bad = dict(pre, update_id=9102); bad["pre_checkout_query"] = dict(pre["pre_checkout_query"], total_amount=1)
+    r = await feed(bad); assert [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"] == [False]; print("UZS pre-checkout ok")
+    r = await feed(msg(900, "/stats")); assert "Оплат картой: 1" in texts(r)[0]
 
     # ---------- admin tools ----------
     r = await feed(msg(900, "/stats")); print("admin stats:", texts(r)[0].replace("\n", " | "))

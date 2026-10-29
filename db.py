@@ -36,6 +36,13 @@ CREATE TABLE IF NOT EXISTS tool_usage (
     n       INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, tool, day)
 );
+CREATE TABLE IF NOT EXISTS card_payments (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    status  TEXT NOT NULL DEFAULT 'pending',
+    created REAL NOT NULL,
+    decided REAL
+);
 CREATE TABLE IF NOT EXISTS admins (
     user_id  INTEGER PRIMARY KEY,
     username TEXT,
@@ -280,6 +287,26 @@ class Database:
         v = await self._scalar("SELECT ticket_id FROM ticket_msgs WHERE chat_id=? AND message_id=?", (chat_id, message_id))
         return v or None
 
+    # ---------- payments by card transfer ----------
+    async def create_card_payment(self, user_id: int) -> int:
+        cur = await self.db.execute("INSERT INTO card_payments(user_id, created) VALUES(?,?)", (user_id, time.time()))
+        await self.db.commit()
+        return cur.lastrowid
+
+    async def get_card_payment(self, pid: int) -> dict | None:
+        async with self.db.execute("SELECT * FROM card_payments WHERE id=?", (pid,)) as cur:
+            row = await cur.fetchone()
+        return dict(row) if row else None
+
+    async def pending_card_payments_of(self, user_id: int) -> int:
+        return await self._scalar("SELECT COUNT(*) FROM card_payments WHERE user_id=? AND status='pending'", (user_id,))
+
+    async def decide_card_payment(self, pid: int, status: str) -> bool:
+        """Moves a pending request to approved/rejected; False when it was already decided (two admins, double tap)."""
+        cur = await self.db.execute("UPDATE card_payments SET status=?, decided=? WHERE id=? AND status='pending'", (status, time.time(), pid))
+        await self.db.commit()
+        return cur.rowcount == 1
+
     # ---------- stats ----------
     async def stats(self) -> dict:
         now = time.time()
@@ -296,6 +323,8 @@ class Database:
             "active_7d": await self._scalar("SELECT COUNT(*) FROM users WHERE last_seen>=?", (now - 7 * 86400,)),
             "payments": await self._scalar("SELECT COUNT(*) FROM payments"),
             "stars": await self._scalar("SELECT COALESCE(SUM(stars),0) FROM payments"),
+            "card_pending": await self._scalar("SELECT COUNT(*) FROM card_payments WHERE status='pending'"),
+            "card_paid": await self._scalar("SELECT COUNT(*) FROM card_payments WHERE status='approved'"),
             "tickets_open": await self._scalar("SELECT COUNT(*) FROM tickets WHERE status='open'"),
             "tickets_total": await self._scalar("SELECT COUNT(*) FROM tickets"),
         }

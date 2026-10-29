@@ -11,6 +11,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
 import admin
+import pay
 import support
 import tools
 from access import Access
@@ -61,6 +62,7 @@ async def main() -> None:
     dp.include_router(support.router)          # order matters: support dialog and admin tools come before the catch-all handlers
     dp.include_router(admin.router)
     dp.include_router(tools.router)
+    dp.include_router(pay.router)
     dp.include_router(router)
     try:
         await bot.delete_webhook(drop_pending_updates=False)

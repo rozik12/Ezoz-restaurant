@@ -86,6 +86,7 @@ async def stats_text(db: Database) -> str:
             f"💎 Подписчиков сейчас: {s['paid']} · оплат: {s['payments']} на {s['stars']} ⭐\n"
             f"🧰 Сегодня: слайдов {s['tools_today'].get('slides', 0)} · проверок на ИИ {s['tools_today'].get('detect', 0)} · "
             f"конвертаций {s['tools_today'].get('convert', 0)}\n"
+            f"💳 Оплат картой: {s['card_paid']} · ждут проверки: {s['card_pending']}\n"
             f"🆘 Обращения: открытых {s['tickets_open']} из {s['tickets_total']}\n"
             f"🚫 Заблокировано: {s['banned']}\n"
             f"🌐 Языки: {langs}")
@@ -423,6 +424,44 @@ async def broadcast_go(call: CallbackQuery, state: FSMContext, db: Database, bot
             failed += 1
         await asyncio.sleep(0.05)                          # stays well below Telegram's 30 messages/second limit
     await call.message.answer(f"📢 Готово. Доставлено: {ok} · заблокировали бота: {blocked} · ошибок: {failed}")
+
+
+# ---------------- card payments ----------------
+@router.callback_query(F.data.startswith("cp:"))
+async def card_decision(call: CallbackQuery, db: Database, settings: Settings, bot: Bot) -> None:
+    _, verdict, pid_s = call.data.split(":")
+    pid = int(pid_s)
+    pay = await db.get_card_payment(pid)
+    if not pay:
+        await call.answer("Заявка не найдена", show_alert=True)
+        return
+    approve = verdict == "ok"
+    if not await db.decide_card_payment(pid, "approved" if approve else "rejected"):
+        await call.answer("Эта заявка уже обработана", show_alert=True)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except TelegramBadRequest:
+            pass
+        return
+    uid = pay["user_id"]
+    lang = await db.get_lang(uid) or DEFAULT_LANG
+    if approve:
+        until = await db.extend_subscription(uid, settings.sub_days)
+        await db.add_payment(uid, f"card:{pid}", 0, settings.sub_days)
+        text = t(lang, "card_approved", until=fdate(until))
+    else:
+        text = t(lang, "card_rejected")
+    try:
+        await bot.send_message(uid, text)
+        note = ""
+    except TelegramAPIError:
+        note = " (пользователю не доставлено: он заблокировал бота)"
+    await call.answer(("Подтверждено" if approve else "Отклонено") + note, show_alert=bool(note))
+    try:
+        await call.message.edit_text(call.message.html_text + f"\n\n{'✅ Подтверждено' if approve else '❌ Отклонено'} · {html.escape(call.from_user.full_name)}",
+                                     reply_markup=None)
+    except TelegramBadRequest:
+        pass
 
 
 # ---------------- admins ----------------

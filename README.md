@@ -38,3 +38,12 @@ python tests/smoke.py    # end-to-end check on fake Telegram and fake Claude
   It is an orientation, not proof; real detectors differ.
 
 Daily limits are separate from chat requests (`SLIDES_DAILY`, `DETECT_DAILY`, `CONVERT_DAILY`; subscribers get triple).
+
+## Paying without Telegram Stars (Uzbek cards)
+
+Stars are sold by Telegram, Apple and Google, so a bot cannot make a card work there. Two alternatives are built in; both stay hidden until configured:
+
+* **Transfer to a card** (works with any Uzcard / Humo card): set `CARD_NUMBER`, `CARD_HOLDER` and `PRICE_UZS`. The user sees the card and the amount,
+  pays through Click, Payme, Paynet or a bank app, and sends the receipt; every administrator gets it with *Confirm / Reject* buttons, and confirming
+  activates the subscription and messages the user. A request cannot be confirmed twice.
+* **Click / Payme inside Telegram:** set `PAYMENT_PROVIDER_TOKEN` (BotFather > the bot > Payments, needs a registered merchant account) and `PRICE_UZS`.

@@ -78,6 +78,45 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "• The price of Stars can differ by platform: on iPhone through the App Store it is usually higher.\n"
         "• You can get Stars as a gift from a friend: they send them from their own balance.\n"
         "• The subscription costs {price} ⭐ for {days} days. If a payment went through but the subscription did not activate, tap «🆘 Support»."),
+    # ---- payment by card transfer ----
+    "btn_card_pay": ("💳 Картой Uzcard / Humo", "💳 Uzcard / Humo kartasi bilan", "💳 Pay by Uzcard / Humo card"),
+    "btn_provider": ("💳 Click / Payme", "💳 Click / Payme", "💳 Click / Payme"),
+    "card_text": (
+        "💳 <b>Оплата переводом на карту</b>\n\n"
+        "Сумма: <b>{amount} сум</b> (подписка на {days} дней)\n"
+        "Карта: <code>{card}</code>\n{holder}\n"
+        "1. Переведите ровно эту сумму через Click, Payme, Paynet или приложение вашего банка.\n"
+        "2. Нажмите «✅ Я оплатил» и пришлите скриншот или фото чека.\n"
+        "3. Администратор проверит платёж и включит подписку, обычно в течение нескольких часов.",
+        "💳 <b>Kartaga o'tkazma orqali to'lov</b>\n\n"
+        "Summa: <b>{amount} so'm</b> ({days} kunlik obuna)\n"
+        "Karta: <code>{card}</code>\n{holder}\n"
+        "1. Aynan shu summani Click, Payme, Paynet yoki bank ilovangiz orqali o'tkazing.\n"
+        "2. «✅ To'ladim» tugmasini bosing va chekning skrinshoti yoki rasmini yuboring.\n"
+        "3. Administrator to'lovni tekshirib, obunani yoqadi, odatda bir necha soat ichida.",
+        "💳 <b>Payment by card transfer</b>\n\n"
+        "Amount: <b>{amount} UZS</b> ({days}-day subscription)\n"
+        "Card: <code>{card}</code>\n{holder}\n"
+        "1. Transfer exactly this amount via Click, Payme, Paynet or your bank app.\n"
+        "2. Tap «✅ I have paid» and send a screenshot or photo of the receipt.\n"
+        "3. An administrator checks the payment and activates the subscription, usually within a few hours."),
+    "card_holder_line": ("Получатель: {name}\n", "Qabul qiluvchi: {name}\n", "Recipient: {name}\n"),
+    "card_paid_btn": ("✅ Я оплатил", "✅ To'ladim", "✅ I have paid"),
+    "card_send": ("Пришлите скриншот или фото чека одним сообщением. Отмена: /cancel",
+                  "Chekning skrinshoti yoki rasmini bitta xabarda yuboring. Bekor qilish: /cancel",
+                  "Send a screenshot or photo of the receipt in one message. Cancel: /cancel"),
+    "card_need_photo": ("Нужен именно скриншот или фото чека (картинкой или файлом).", "Aynan chekning skrinshoti yoki rasmi kerak (rasm yoki fayl ko'rinishida).",
+                        "Please send the receipt as a screenshot or photo (image or file)."),
+    "card_received": ("✅ Чек получен, заявка №{id}. Администратор проверит платёж и включит подписку. Я напишу вам здесь.",
+                      "✅ Chek qabul qilindi, №{id} ariza. Administrator to'lovni tekshirib, obunani yoqadi. Sizga shu yerda yozaman.",
+                      "✅ Receipt received, request #{id}. An administrator will check the payment and activate the subscription. I will message you here."),
+    "card_pending": ("Ваша заявка на проверке, дождитесь ответа администратора.", "Arizangiz tekshiruvda, administrator javobini kuting.",
+                     "Your request is being reviewed, please wait for the administrator."),
+    "card_approved": ("✅ Платёж подтверждён! Подписка активна до {until}.", "✅ To'lov tasdiqlandi! Obuna {until} gacha faol.",
+                      "✅ Payment confirmed! Your subscription is active until {until}."),
+    "card_rejected": ("❌ Платёж не подтверждён. Если это ошибка, нажмите «🆘 Поддержка» и приложите чек.",
+                      "❌ To'lov tasdiqlanmadi. Xato bo'lsa, «🆘 Yordam xizmati» tugmasini bosing va chekni ilova qiling.",
+                      "❌ The payment was not confirmed. If this is a mistake, tap «🆘 Support» and attach the receipt."),
     # ---- AI check ----
     "detect_intro": (
         "🕵️ <b>Проверка на ИИ</b>\n\nПришлите текст (от {n} знаков) или файл .txt, .pdf, .docx. Я оценю, насколько он похож на машинный, "

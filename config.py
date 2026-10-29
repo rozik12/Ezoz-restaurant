@@ -37,9 +37,22 @@ class Settings:
     detect_daily: int
     convert_daily: int
     price_stars: int
+    price_uzs: int
+    card_number: str
+    card_holder: str
+    provider_token: str
     sub_days: int
     db_path: str
     support_contact: str
+
+    @property
+    def card_ready(self) -> bool:
+        """Payment by transfer to an Uzbek card needs both the card and the amount in so'm."""
+        return bool(self.card_number and self.price_uzs)
+
+    @property
+    def provider_ready(self) -> bool:
+        return bool(self.provider_token and self.price_uzs)
 
     @classmethod
     def load(cls) -> "Settings":
@@ -64,6 +77,10 @@ class Settings:
             detect_daily=_int("DETECT_DAILY", 5),
             convert_daily=_int("CONVERT_DAILY", 30),
             price_stars=_int("PRICE_STARS", 300),
+            price_uzs=_int("PRICE_UZS", 0),
+            card_number=os.getenv("CARD_NUMBER", "").strip(),
+            card_holder=os.getenv("CARD_HOLDER", "").strip(),
+            provider_token=os.getenv("PAYMENT_PROVIDER_TOKEN", "").strip(),
             sub_days=_int("SUB_DAYS", 30),
             db_path=os.getenv("DB_PATH", "omnistudent.db").strip(),
             support_contact=os.getenv("SUPPORT_CONTACT", "").strip(),

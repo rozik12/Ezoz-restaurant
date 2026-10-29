@@ -135,7 +135,7 @@ async def status_text(db: Database, s: Settings, user_id: int, lang: str) -> str
 @router.message(F.text.in_(kb.BTN_SUB))
 async def subscribe(message: Message, db: Database, settings: Settings, lang: str) -> None:
     await message.answer(await status_text(db, settings, message.from_user.id, lang),
-                         reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang))
+                         reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
 
 
 async def send_invoice(target: Message, settings: Settings, user_id: int, lang: str) -> None:
@@ -156,7 +156,7 @@ async def stars_howto(message: Message, settings: Settings, lang: str) -> None:
 async def stars_howto_btn(call: CallbackQuery, settings: Settings, lang: str) -> None:
     await call.answer()
     await call.message.answer(t(lang, "stars_howto", price=settings.price_stars, days=settings.sub_days),
-                              reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang))
+                              reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
 
 
 @router.callback_query(F.data == "pay")
@@ -165,9 +165,22 @@ async def pay_button(call: CallbackQuery, settings: Settings, lang: str) -> None
     await send_invoice(call.message, settings, call.from_user.id, lang)
 
 
+@router.callback_query(F.data == "payp")
+async def provider_button(call: CallbackQuery, settings: Settings, lang: str) -> None:
+    """Click / Payme through a Telegram payment provider (bills in so'm; amounts are in tiyin)."""
+    await call.answer()
+    if not settings.provider_ready:
+        return
+    await call.message.answer_invoice(
+        title=t(lang, "invoice_title", days=settings.sub_days), description=t(lang, "invoice_desc", paid=settings.paid_daily),
+        payload=f"sub:{call.from_user.id}", currency="UZS", provider_token=settings.provider_token,
+        prices=[LabeledPrice(label=t(lang, "invoice_label", days=settings.sub_days), amount=settings.price_uzs * 100)])
+
+
 @router.pre_checkout_query()
 async def pre_checkout(query: PreCheckoutQuery, settings: Settings, db: Database) -> None:
-    ok = query.currency == "XTR" and query.total_amount == settings.price_stars and query.invoice_payload == f"sub:{query.from_user.id}"
+    expected = {"XTR": settings.price_stars, "UZS": settings.price_uzs * 100 if settings.provider_ready else -1}
+    ok = expected.get(query.currency) == query.total_amount and query.invoice_payload == f"sub:{query.from_user.id}"
     lang = await db.get_lang(query.from_user.id) or DEFAULT_LANG
     await query.answer(ok=ok, error_message=None if ok else t(lang, "bad_invoice"))
 
@@ -178,7 +191,7 @@ async def paid(message: Message, db: Database, settings: Settings, lang: str) ->
     if await db.payment_exists(p.telegram_payment_charge_id):            # Telegram may redeliver an update
         return
     await db.touch_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
-    await db.add_payment(message.from_user.id, p.telegram_payment_charge_id, p.total_amount, settings.sub_days)
+    await db.add_payment(message.from_user.id, p.telegram_payment_charge_id, p.total_amount if p.currency == "XTR" else 0, settings.sub_days)
     until = await db.extend_subscription(message.from_user.id, settings.sub_days)
     log.info("Subscription paid by %s, %s Stars", message.from_user.id, p.total_amount)
     await message.answer(t(lang, "paid_ok", until=_fmt_until(until)), reply_markup=kb.main_menu(lang))
@@ -201,7 +214,7 @@ async def run_assistant(message: Message, db: Database, ai: Assistant, settings:
             await message.answer(t(lang, "limit_paid", n=limit))
         else:
             await message.answer(t(lang, "limit_free", n=limit, price=settings.price_stars, paid=settings.paid_daily),
-                                 reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang))
+                                 reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
         return
     lock = _lock(uid)
     if lock.locked():
@@ -227,7 +240,7 @@ async def run_assistant(message: Message, db: Database, ai: Assistant, settings:
             left = max(0, limit - await db.used_today(uid))
             if left == 0:
                 await message.answer(t(lang, "last_free"),
-                                     reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang))
+                                     reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang, card=settings.card_ready, provider=settings.provider_ready))
 
 
 @router.message(F.document)
