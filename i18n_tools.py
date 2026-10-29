@@ -152,11 +152,11 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "refunded": ("Звёзды за этот запрос вам вернулись.", "Bu so'rov uchun yulduzlar qaytarildi.", "The Stars for this request were returned to you."),
     "granted": ("💰 Вам начислено {n} ⭐. Баланс: {balance} ⭐.", "💰 Sizga {n} ⭐ berildi. Balans: {balance} ⭐.", "💰 You received {n} ⭐. Balance: {balance} ⭐."),
     "paysupport": (
-        "💬 <b>Вопросы по оплате.</b> Если оплата прошла, а звёзды не зачислились, или нужно вернуть платёж, "
+        "💬 <b>Вопросы по оплате.</b> Если оплата прошла, а звёзды не зачислились, "
         "нажмите «🆘 Поддержка» и сообщите ID платежа из чата с чеком.",
-        "💬 <b>To'lov bo'yicha savollar.</b> To'lov o'tgan, lekin yulduzlar tushmagan bo'lsa yoki to'lovni qaytarish kerak bo'lsa, "
+        "💬 <b>To'lov bo'yicha savollar.</b> To'lov o'tgan, lekin yulduzlar tushmagan bo'lsa, "
         "«🆘 Yordam xizmati» tugmasini bosing va chekdagi to'lov ID sini yozing.",
-        "💬 <b>Payment questions.</b> If a payment went through but the Stars were not added, or you need a refund, "
+        "💬 <b>Payment questions.</b> If a payment went through but the Stars were not added, "
         "tap «🆘 Support» and send the payment ID from the receipt chat."),
     "stars_howto": (
         "⭐ <b>Как купить Telegram Stars</b>\n\n"

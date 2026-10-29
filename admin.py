@@ -499,62 +499,6 @@ async def broadcast_go(call: CallbackQuery, state: FSMContext, db: Database, bot
     await call.message.answer(f"📢 Готово. Доставлено: {ok} · заблокировали бота: {blocked} · ошибок: {failed}")
 
 
-# ---------------- refunds of Stars ----------------
-async def perform_refund(bot: Bot, db: Database, uid: int) -> tuple[int, str]:
-    """Returns the user's unused purchased Stars through Telegram. (stars returned, error text or '')."""
-    chosen, _ = await db.refundable(uid)
-    total = 0
-    for pay in chosen:
-        try:
-            await bot.refund_star_payment(user_id=uid, telegram_payment_charge_id=pay["charge_id"])
-        except TelegramAPIError as e:
-            return total, f"{pay['charge_id']}: {e}"
-        await db.mark_payment_refunded(pay["charge_id"])
-        await db.charge(uid, pay["stars"], "refund_out", pay["charge_id"])
-        total += pay["stars"]
-    return total, ""
-
-
-@router.callback_query(F.data.startswith("cr:"))
-async def refund_decision(call: CallbackQuery, db: Database, bot: Bot) -> None:
-    _, verdict, rid_s = call.data.split(":")
-    req = await db.get_refund_request(int(rid_s))
-    if not req:
-        await call.answer("Заявка не найдена", show_alert=True)
-        return
-    approve = verdict == "ok"
-    if not await db.decide_refund_request(req["id"], "approved" if approve else "rejected"):
-        await call.answer("Эта заявка уже обработана", show_alert=True)
-        try:
-            await call.message.edit_reply_markup(reply_markup=None)
-        except TelegramBadRequest:
-            pass
-        return
-    uid = req["user_id"]
-    lang = await db.get_lang(uid) or DEFAULT_LANG
-    result = ""
-    if approve:
-        got, err = await perform_refund(bot, db, uid)       # recomputed now: the user may have spent Stars since the request
-        if got:
-            text = t(lang, "refund_done", n=got, balance=await db.balance(uid))
-            result = f"✅ Возвращено {got} ⭐" + (f" (часть не вернулась: {html.escape(err)})" if err else "")
-        else:
-            text = t(lang, "refund_rejected")
-            result = "⚠️ Вернуть нечего" + (f": {html.escape(err)}" if err else " (Stars уже потрачены или возвращены)")
-    else:
-        text = t(lang, "refund_rejected")
-        result = "❌ Отклонено"
-    try:
-        await bot.send_message(uid, text)
-    except TelegramAPIError:
-        result += " (пользователю не доставлено)"
-    await call.answer(result, show_alert=True)
-    try:
-        await call.message.edit_text(call.message.html_text + f"\n\n{result} · {html.escape(call.from_user.full_name)}", reply_markup=None)
-    except TelegramBadRequest:
-        pass
-
-
 # ---------------- card payments ----------------
 @router.callback_query(F.data.startswith("cp:"))
 async def card_decision(call: CallbackQuery, db: Database, settings: Settings, bot: Bot) -> None:
@@ -621,7 +565,6 @@ async def report_text(db: Database, settings: Settings, days: int) -> str:
             f"💳 Картой и Click/Payme: <b>{uzs_stars} ⭐</b>" + (f" ≈ {uzs_stars * rate:,} сум".replace(",", " ") if rate else "") +
             f" ({r['card_payments']} подтверждено картой)\n"
             f"👥 Платили: {r['payers']} чел.\n\n"
-            f"↩️ Возвращено клиентам: {r['refunded']} ⭐\n"
             f"🛒 Потрачено клиентами: <b>{r['spent']} ⭐</b> за {r['actions']} действий\n"
             f"   {acts}\n\n"
             f"🆕 Новых пользователей: {r['new_users']} · были активны: {r['active_users']}")
@@ -680,8 +623,8 @@ KIND = {"topup": "Stars", "topup_uzs": "Click/Payme", "card": "карта"}
 
 async def send_payments(target: Message, bot: Bot, db: Database, settings: Settings) -> None:
     pending = await db.pending_card_payments(10)
-    if not pending and not await db.pending_refund_requests(1):
-        await target.answer("💳 Чеков и заявок на возврат нет.")
+    if not pending:
+        await target.answer("💳 Чеков на проверку нет.")
     for p in pending:
         who = html.escape(p["name"] or "—") + (f" @{html.escape(p['username'])}" if p["username"] else "")
         await target.answer(f"💳 <b>Заявка #{p['id']}</b> · {who} · <code>{p['user_id']}</code>\n"
@@ -693,11 +636,6 @@ async def send_payments(target: Message, bot: Bot, db: Database, settings: Setti
                 await bot.copy_message(target.chat.id, p["chat_id"], p["msg_id"])
             except TelegramAPIError:
                 await target.answer("(чек больше недоступен: пользователь мог удалить сообщение)")
-    for rq in await db.pending_refund_requests(10):
-        who = html.escape(rq["name"] or "—") + (f" @{html.escape(rq['username'])}" if rq["username"] else "")
-        await target.answer(f"↩️ <b>Заявка на возврат #{rq['id']}</b> · {who} · <code>{rq['user_id']}</code>\n{rq['stars']} ⭐",
-                            reply_markup=Markup(inline_keyboard=[[Btn(text=f"✅ Вернуть {rq['stars']} ⭐", callback_data=f"cr:ok:{rq['id']}"),
-                                                                  Btn(text="❌ Отклонить", callback_data=f"cr:no:{rq['id']}")]]))
     recent = await db.recent_topups(10)
     if recent:
         lines = [f"• {fdate(r['ts'])} · {html.escape(r['name'] or '—')} · <code>{r['user_id']}</code> · +{r['delta']} ⭐ ({KIND.get(r['kind'], r['kind'])})"
