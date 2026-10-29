@@ -34,6 +34,10 @@ router.message.filter(F.chat.type == ChatType.PRIVATE)
 CANCEL = labels("cancel_btn")
 
 
+_decks: dict[int, tuple[str, str]] = {}          # user id -> (deck JSON, file name); lets a student restyle the last deck for free
+MAX_DECKS = 500
+
+
 class Tool(StatesGroup):
     slides = State()
     detect = State()
@@ -122,7 +126,7 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
     try:
         async with ChatActionSender.upload_document(bot=bot, chat_id=message.chat.id):
             for _ in range(2):                                    # one retry when the model's JSON is malformed
-                raw = await ai.complete(sl.outline_prompt(lang, count), f"Topic or source material:\n{topic[:12000]}", 4500)
+                raw = await ai.complete(sl.outline_prompt(lang, count), f"Topic or source material:\n{topic[:12000]}", 6000)
                 try:
                     deck = sl.parse_deck(raw)
                     break
@@ -130,7 +134,13 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
                     log.warning("Slides: unparsable model output")
             if deck is None:
                 raise ValueError("no deck")
-            data = await asyncio.to_thread(sl.build_pptx, deck)
+            try:                                                  # second pass: an editor sharpens titles, bullets and notes
+                better = sl.parse_deck(await ai.complete(sl.refine_prompt(lang), sl.deck_to_json(deck), 6000))
+                if len(better.slides) >= len(deck.slides) - 1:
+                    deck = better
+            except (AssistantError, ValueError, TypeError):
+                log.warning("Slides: refinement skipped")
+            data = await asyncio.to_thread(sl.build_pptx, deck, "modern", lang)
     except AssistantError as e:
         await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}")
         return
@@ -145,9 +155,27 @@ async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Databas
             pass
     await db.count_tool(uid, "slides")
     name = re.sub(r"[^\w\- ]+", "", deck.title).strip()[:40].replace(" ", "_") or "presentation"
+    if len(_decks) >= MAX_DECKS:
+        _decks.pop(next(iter(_decks)))
+    _decks[uid] = (sl.deck_to_json(deck), name)
     await message.answer_document(BufferedInputFile(data, filename=f"{name}.pptx"), caption=t(lang, "slides_done", n=len(deck.slides)),
-                                  reply_markup=kb.main_menu(lang))
+                                  reply_markup=kb.theme_buttons(lang, "modern"))
+    await message.answer(t(lang, "slides_restyle"), reply_markup=kb.main_menu(lang))
     await state.clear()
+
+
+@router.callback_query(F.data.startswith("th:"))
+async def restyle(call: CallbackQuery, lang: str) -> None:
+    theme = call.data.split(":")[1]
+    saved = _decks.get(call.from_user.id)
+    if theme not in sl.THEMES or not saved:
+        await call.answer(t(lang, "slides_old"), show_alert=True)
+        return
+    await call.answer(t(lang, "convert_working"))
+    deck = sl.parse_deck(saved[0])
+    data = await asyncio.to_thread(sl.build_pptx, deck, theme, lang)
+    await call.message.answer_document(BufferedInputFile(data, filename=f"{saved[1]}_{theme}.pptx"),
+                                       reply_markup=kb.theme_buttons(lang, theme))
 
 
 # ---------------- AI check ----------------

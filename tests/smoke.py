@@ -33,7 +33,7 @@ class FakeMessages:
     async def create(self, **kw):
         self.calls.append(kw)
         text = "## План\n**Введение** и *выводы*\n- пункт"
-        if "student presentations" in kw["system"]:
+        if "presentation designer" in kw["system"] or "editor of presentation decks" in kw["system"]:
             text = '{"title":"Цифровой маркетинг","subtitle":"Курс","slides":[{"title":"Что это","bullets":["a","b","c"],"notes":"n"},{"title":"Итоги","bullets":["x"]}]}'
         if "machine-written" in kw["system"]:
             text = '{"ai_probability": 74, "signals":["Одинаковый ритм"], "fragments":[{"quote":"Таким образом","reason":"шаблон"}], "advice":["Добавьте примеры"]}'
@@ -168,7 +168,9 @@ async def body(s, db):
     r = await feed(msg(T, "📊 Slides")); assert "Free slides" in texts(r)[0]
     r = await feed(msg(T, "Digital marketing, 8 slides")); docs_out = [c for c in r if c[0] == "sendDocument"]
     assert docs_out and docs_out[0][1]["caption"].startswith("✅ Done: 2 slides"), r; print("slides ok:", docs_out[0][1]["caption"])
-    assert "exactly 8 content slides" in fake.calls[-1]["system"] and "English" in fake.calls[-1]["system"]
+    assert any("exactly 8 content slides" in c["system"] and "English" in c["system"] for c in fake.calls[-3:])
+    r = await feed(cb(T, "th:dark")); d = [c for c in r if c[0] == "sendDocument"]; assert d, r; print("restyle ok")
+    assert sum(1 for c in fake.calls if "editor of presentation decks" in c["system"]) >= 1; print("refine pass ran")
     r = await feed(msg(T, "🕵️ AI check")); assert "AI check" in texts(r)[0]
     r = await feed(msg(T, "short text")); assert "at least" in texts(r)[0]
     r = await feed(msg(T, "Таким образом, это очень длинный текст. " * 20)); rep = texts(r)[-1]

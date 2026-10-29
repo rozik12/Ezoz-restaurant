@@ -15,8 +15,8 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "Yoki fayl (.txt, .pdf, .docx) yuboring, men uning asosida taqdimot qilaman. PowerPoint uchun tayyor .pptx olasiz.\n\nBekor qilish: /cancel",
         "📊 <b>Free slides</b>\n\nSend the presentation topic, optionally with a slide count, e.g. <i>\"Digital marketing, 12 slides\"</i>. "
         "Or send a file (.txt, .pdf, .docx) and I'll build the deck from it. You get a ready .pptx for PowerPoint.\n\nCancel: /cancel"),
-    "slides_working": ("⏳ Делаю презентацию, это займёт около минуты…", "⏳ Taqdimot tayyorlanmoqda, taxminan bir daqiqa ketadi…",
-                       "⏳ Building your presentation, about a minute…"),
+    "slides_working": ("⏳ Продумываю структуру, пишу слайды и проверяю качество. Это займёт около минуты…", "⏳ Tuzilmani o'ylab, slaydlarni yozib, sifatni tekshiryapman. Taxminan bir daqiqa…",
+                       "⏳ Planning the story, writing the slides and polishing them. About a minute…"),
     "slides_done": (
         "✅ Готово: {n} слайдов. К каждому слайду есть заметки для выступления. Проверьте факты перед защитой.",
         "✅ Tayyor: {n} ta slayd. Har bir slaydga chiqish uchun izohlar bor. Himoyadan oldin faktlarni tekshiring.",
@@ -24,6 +24,13 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "slides_fail": ("Не получилось собрать презентацию. Попробуйте переформулировать тему.", "Taqdimot tayyorlab bo'lmadi. Mavzuni boshqacha yozib ko'ring.",
                     "Could not build the presentation. Try rephrasing the topic."),
     "slides_short": ("Напишите тему подробнее или пришлите файл.", "Mavzuni batafsilroq yozing yoki fayl yuboring.", "Describe the topic in more detail or send a file."),
+    "theme_modern": ("🎨 Современный", "🎨 Zamonaviy", "🎨 Modern"),
+    "theme_classic": ("🎨 Строгий", "🎨 Klassik", "🎨 Classic"),
+    "theme_dark": ("🎨 Тёмный", "🎨 Qorong'i", "🎨 Dark"),
+    "slides_restyle": ("Другой стиль той же презентации (без новой генерации):", "Xuddi shu taqdimotning boshqa uslubi (qayta yaratmasdan):",
+                       "Another style of the same deck (no new generation):"),
+    "slides_old": ("Эта презентация уже недоступна для смены стиля: создайте новую.", "Bu taqdimot uslubini o'zgartirib bo'lmaydi: yangisini yarating.",
+                   "This deck can no longer be restyled: create a new one."),
     # ---- AI check ----
     "detect_intro": (
         "🕵️ <b>Проверка на ИИ</b>\n\nПришлите текст (от {n} знаков) или файл .txt, .pdf, .docx. Я оценю, насколько он похож на машинный, "

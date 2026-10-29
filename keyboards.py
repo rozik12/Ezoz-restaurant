@@ -58,5 +58,11 @@ def convert_targets(targets: tuple[str, ...]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[row[i:i + 3] for i in range(0, len(row), 3)])
 
 
+def theme_buttons(lang: str, current: str) -> InlineKeyboardMarkup:
+    from slides import THEME_ORDER
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t(lang, f"theme_{n}"), callback_data=f"th:{n}")
+                                                  for n in THEME_ORDER if n != current]])
+
+
 def subscribe_button(label: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=label, callback_data="pay")]])
