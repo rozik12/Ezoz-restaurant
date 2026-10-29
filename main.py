@@ -31,6 +31,7 @@ async def setup_profile(bot: Bot) -> None:
         await bot.set_my_description(DESCRIPTION)
         await bot.set_my_short_description(SHORT)
         await bot.set_my_commands([BotCommand(command="start", description="Главное меню"),
+                                   BotCommand(command="guide", description="Инструкция / Yo'riqnoma / Guide"),
                                    BotCommand(command="new", description="Новый диалог"),
                                    BotCommand(command="wallet", description="Кошелёк / Hamyon / Wallet"),
                                    BotCommand(command="stars", description="Как купить Stars / Stars sotib olish / Buy Stars"),

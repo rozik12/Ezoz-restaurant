@@ -93,6 +93,8 @@ async def body(s, db):
     print("start asks language:", texts(r)[0][:40])
     r = await feed(cb(U, "lang:ru")); welcome = [x for x in texts(r) if "OmniStudent" in x]; assert welcome and len(r[-1][1]["reply_markup"]["keyboard"]) == 6
     print("language ru + welcome ok, menu rows:", len(r[-1][1]["reply_markup"]["keyboard"]))
+    guide = [x for x in texts(r) if "Как пользоваться ботом" in x]; assert guide and "{" not in guide[0] and "<b>0</b>" in guide[0] and "50 ⭐" in guide[0]; print("guide sent right after the language choice:", guide[0][:30])
+    r = await feed(msg(U, "/guide")); assert "Как пользоваться ботом" in texts(r)[0]
     r = await feed(msg(U, "✍️ Писать работу")); print("mode intro:", texts(r)[0][:40])
     r = await feed(msg(U, "Курсовая по маркетингу, 30 страниц")); out = texts(r)
     assert "Недостаточно звёзд" in out[0], out; mk = r[0][1]["reply_markup"]["inline_keyboard"]
@@ -145,11 +147,11 @@ async def body(s, db):
 
     # ---------- three languages ----------
     V, W = 200, 300
-    await feed(msg(V, "/start")); r = await feed(cb(V, "lang:uz")); assert any("Salom" in x for x in texts(r)); print("uz welcome ok")
+    await feed(msg(V, "/start")); r = await feed(cb(V, "lang:uz")); assert any("Salom" in x for x in texts(r)) and any("Botdan qanday foydalaniladi" in x for x in texts(r)); print("uz welcome + guide ok")
     r = await feed(msg(V, "🆘 Yordam xizmati")); assert "Yordam xizmati" in texts(r)[0]; print("uz support entry ok")
     await feed(msg(V, "/cancel"))
     await db.credit(V, 500, "admin"); await feed(msg(V, "Salom, kurs ishi kerak")); assert "o'zbekcha" in fake.calls[-1]["system"]; print("uz system hint ok")
-    await feed(msg(W, "/start")); r = await feed(cb(W, "lang:en")); assert any("Hi! I'm OmniStudent" in x for x in texts(r)); print("en welcome ok")
+    await feed(msg(W, "/start")); r = await feed(cb(W, "lang:en")); assert any("Hi! I'm OmniStudent" in x for x in texts(r)) and any("How to use the bot" in x for x in texts(r)); print("en welcome + guide ok")
     r = await feed(msg(W, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("en mode button ok")
     r = await feed(msg(V, "/wallet")); assert "Sizning hamyoningiz" in texts(r)[0] and "Boshqa summa" in str(r[0][1]["reply_markup"]); print("uz wallet text ok")
     r = await feed(cb(V, "stars:how")); howto = texts(r)[0]; assert "Mening yulduzlarim" in howto; print("stars how-to (uz) ok")

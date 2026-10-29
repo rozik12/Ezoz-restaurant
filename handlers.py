@@ -77,6 +77,17 @@ async def lang_pick(call: CallbackQuery, db: Database, settings: Settings) -> No
     except TelegramBadRequest:
         pass
     await call.message.answer(t(code, "welcome", free=settings.free_actions), reply_markup=kb.main_menu(code))
+    await call.message.answer(guide_text(settings, code), reply_markup=kb.main_menu(code))      # what the bot can do, right after the language is chosen
+
+
+def guide_text(settings: Settings, lang: str) -> str:
+    p = settings.prices
+    return t(lang, "guide", free=settings.free_actions, chat=p["chat"], slides=p["slides"], detect=p["detect"], convert=p["convert"])
+
+
+@router.message(Command("guide"))
+async def guide_cmd(message: Message, settings: Settings, lang: str) -> None:
+    await message.answer(guide_text(settings, lang))
 
 
 @router.message(Command("help"))
