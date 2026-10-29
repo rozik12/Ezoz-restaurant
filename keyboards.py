@@ -1,53 +1,48 @@
-"""Keyboards and the button labels the handlers match on."""
+"""Keyboards and the button labels the handlers match on (every language at once)."""
 from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
-BTN_WRITE = "✍️ Писать работу"
-BTN_TECH = "🧮 Задачи и код"
-BTN_EDIT = "📝 Редактор и перевод"
-BTN_CHEAT = "🎓 Шпаргалки и экзамен"
-BTN_SUB = "💎 Подписка"
-BTN_NEW = "🧹 Новый диалог"
+from i18n import LANGS, labels, t
 
-MODE_BUTTONS = {BTN_WRITE: "writer", BTN_TECH: "tech", BTN_EDIT: "editor"}
+# button label (any language) -> mode / action
+MODE_BUTTONS = {**{x: "writer" for x in labels("btn_write")},
+                **{x: "tech" for x in labels("btn_tech")},
+                **{x: "editor" for x in labels("btn_edit")}}
+BTN_CHEAT = labels("btn_cheat")
+BTN_SUB = labels("btn_sub")
+BTN_NEW = labels("btn_new")
+BTN_SUPPORT = labels("btn_support")
+BTN_LANG = labels("btn_lang")
 
 MODE_TITLES = {
-    "general": "Свободный режим",
-    "writer": "Академический писатель",
-    "tech": "Технический эксперт",
-    "editor": "Редактор и переводчик",
-    "cheat": "Шпаргалка",
-    "exam": "Вредный преподаватель",
-}
-
-MODE_INTRO = {
-    "writer": ("✍️ <b>Академический писатель</b>\n\nПомогу с курсовой, рефератом, эссе или дипломной: план, оглавление, введение, "
-               "главы, выводы, список литературы.\n\nНапишите тему и, если знаете, объём и стандарт оформления вуза. "
-               "Например: <i>«Курсовая по маркетингу, тема: digital-стратегии ресторанов, 30 страниц, ГОСТ»</i>."),
-    "tech": ("🧮 <b>Технический эксперт</b>\n\nРешаю задачи по математике, физике, экономике и программированию "
-             "с пошаговым объяснением. Код пишу рабочим, с комментариями и инструкцией запуска.\n\nПришлите условие задачи или текст задания."),
-    "editor": ("📝 <b>Редактор и переводчик</b>\n\nПроверю орфографию и логику, сделаю академический рерайт без потери смысла, "
-               "переведу научный текст с сохранением терминологии.\n\nПришлите текст или файл (.txt, .pdf, .docx) и напишите, что сделать."),
-    "cheat": ("📋 <b>Шпаргалка</b>\n\nПришлите конспект, лекцию или файл (.txt, .pdf, .docx), и я сделаю краткую выжимку: "
-              "определения, формулы, ключевые мысли."),
-    "exam": ("😈 <b>Вредный преподаватель</b>\n\nПришлите тему или текст курсовой, и я буду задавать каверзные вопросы по одному, "
-             "как на защите. Отвечайте, а я скажу, что слабо.\n\nЧтобы начать, напишите: <i>«Начинай»</i> и дайте тему работы."),
+    "general": "Свободный режим", "writer": "Академический писатель", "tech": "Технический эксперт",
+    "editor": "Редактор и переводчик", "cheat": "Шпаргалка", "exam": "Вредный преподаватель",
 }
 
 
-def main_menu() -> ReplyKeyboardMarkup:
+def main_menu(lang: str) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=BTN_WRITE), KeyboardButton(text=BTN_TECH)],
-                  [KeyboardButton(text=BTN_EDIT), KeyboardButton(text=BTN_CHEAT)],
-                  [KeyboardButton(text=BTN_SUB), KeyboardButton(text=BTN_NEW)]],
-        resize_keyboard=True, input_field_placeholder="Напишите вопрос или пришлите файл")
+        keyboard=[[KeyboardButton(text=t(lang, "btn_write")), KeyboardButton(text=t(lang, "btn_tech"))],
+                  [KeyboardButton(text=t(lang, "btn_edit")), KeyboardButton(text=t(lang, "btn_cheat"))],
+                  [KeyboardButton(text=t(lang, "btn_sub")), KeyboardButton(text=t(lang, "btn_new"))],
+                  [KeyboardButton(text=t(lang, "btn_support")), KeyboardButton(text=t(lang, "btn_lang"))]],
+        resize_keyboard=True, input_field_placeholder=t(lang, "placeholder"))
 
 
-def cheat_choice() -> InlineKeyboardMarkup:
+def cancel_menu(lang: str) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text=t(lang, "cancel_btn"))]], resize_keyboard=True)
+
+
+def lang_choice() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=name, callback_data=f"lang:{code}")]
+                                                 for code, name in LANGS.items()])
+
+
+def cheat_choice(lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 Шпаргалка из материала", callback_data="mode:cheat")],
-        [InlineKeyboardButton(text="😈 Вредный преподаватель", callback_data="mode:exam")]])
+        [InlineKeyboardButton(text=t(lang, "cheat_btn"), callback_data="mode:cheat")],
+        [InlineKeyboardButton(text=t(lang, "exam_btn"), callback_data="mode:exam")]])
 
 
 def subscribe_button(label: str) -> InlineKeyboardMarkup:

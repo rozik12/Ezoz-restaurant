@@ -19,3 +19,12 @@ python tests/smoke.py    # end-to-end check on fake Telegram and fake Claude
 - The system prompt lives in `prompts.py`; the bot appends only the answer format, the current mode and the plan (free or paid).
 - Telegram requires bots that take Stars to answer `/paysupport`; set `SUPPORT_CONTACT` to your contact.
 - `MemoryStorage` and SQLite are enough for one instance; keep the database on a persistent volume when deploying.
+
+## Languages, support and admin tools
+
+* The bot speaks Russian, Uzbek and English (`i18n.py`). A new user picks a language on `/start`; `🌐` or `/lang` changes it later.
+* **Support:** users tap `🆘 Support` (or `/support`) and write one message. Every administrator receives it with the buttons
+  *Reply / Close / Profile*; a swipe-reply to the message also answers the client. Replies come back in the client's language.
+* **Admins:** ids in `ADMIN_IDS` are owners; usernames in `ADMIN_USERNAMES` become admins on their first message.
+  `/admin` opens the panel: statistics (users, new, active, subscribers, requests, languages, tickets), user list and cards,
+  subscription grant/revoke, ban/unban, refunds, tickets, broadcast, admin list. Only owners use `/addadmin` and `/rmadmin`.

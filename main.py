@@ -10,6 +10,9 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
+import admin
+import support
+from access import Access
 from config import Settings
 from db import Database
 from handlers import router
@@ -28,6 +31,8 @@ async def setup_profile(bot: Bot) -> None:
         await bot.set_my_commands([BotCommand(command="start", description="Главное меню"),
                                    BotCommand(command="new", description="Новый диалог"),
                                    BotCommand(command="subscribe", description="Подписка за Stars"),
+                                   BotCommand(command="support", description="Поддержка / Yordam / Support"),
+                                   BotCommand(command="lang", description="Язык / Til / Language"),
                                    BotCommand(command="help", description="Помощь"),
                                    BotCommand(command="paysupport", description="Вопросы по оплате")])
     except Exception:
@@ -45,6 +50,11 @@ async def main() -> None:
 
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=settings)     # injected into handlers by name
+    access = Access(db, settings)
+    dp.message.outer_middleware(access)
+    dp.callback_query.outer_middleware(access)
+    dp.include_router(support.router)          # order matters: support dialog and admin tools come before the catch-all handlers
+    dp.include_router(admin.router)
     dp.include_router(router)
     try:
         await bot.delete_webhook(drop_pending_updates=False)

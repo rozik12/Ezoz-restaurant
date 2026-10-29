@@ -28,6 +28,7 @@ class Settings:
     anthropic_key: str
     model: str
     admin_ids: tuple[int, ...]
+    admin_usernames: tuple[str, ...]
     free_daily: int
     paid_daily: int
     free_max_tokens: int
@@ -51,6 +52,7 @@ class Settings:
             anthropic_key=os.getenv("ANTHROPIC_API_KEY", "").strip(),
             model=os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5").strip(),
             admin_ids=_ids("ADMIN_IDS"),
+            admin_usernames=tuple(x.lstrip("@").lower() for x in os.getenv("ADMIN_USERNAMES", "").replace(" ", "").split(",") if x),
             free_daily=_int("FREE_DAILY", 5),
             paid_daily=_int("PAID_DAILY", 100),
             free_max_tokens=_int("FREE_MAX_TOKENS", 1800),

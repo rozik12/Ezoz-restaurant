@@ -29,6 +29,26 @@ CREATE TABLE IF NOT EXISTS usage (
     n       INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, day)
 );
+CREATE TABLE IF NOT EXISTS admins (
+    user_id  INTEGER PRIMARY KEY,
+    username TEXT,
+    added    REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tickets (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id  INTEGER NOT NULL,
+    text     TEXT NOT NULL,
+    status   TEXT NOT NULL DEFAULT 'open',
+    created  REAL NOT NULL,
+    answered REAL
+);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status, id);
+CREATE TABLE IF NOT EXISTS ticket_msgs (
+    chat_id   INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    ticket_id INTEGER NOT NULL,
+    PRIMARY KEY (chat_id, message_id)
+);
 CREATE TABLE IF NOT EXISTS payments (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id   INTEGER NOT NULL,
@@ -53,6 +73,11 @@ class Database:
         self._db = await aiosqlite.connect(self.path)
         self._db.row_factory = aiosqlite.Row
         await self._db.executescript(SCHEMA)
+        async with self._db.execute("PRAGMA table_info(users)") as cur:
+            cols = {r["name"] for r in await cur.fetchall()}
+        for col, ddl in (("lang", "TEXT"), ("banned", "INTEGER NOT NULL DEFAULT 0"), ("last_seen", "REAL NOT NULL DEFAULT 0")):
+            if col not in cols:                               # upgrade a database created by an older version
+                await self._db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
         await self._db.commit()
 
     async def close(self) -> None:
@@ -72,9 +97,9 @@ class Database:
     # ---------- users ----------
     async def touch_user(self, user_id: int, username: str | None, name: str) -> None:
         await self.db.execute(
-            """INSERT INTO users(user_id, username, name, created) VALUES(?,?,?,?)
-               ON CONFLICT(user_id) DO UPDATE SET username=excluded.username, name=excluded.name""",
-            (user_id, username, name, time.time()))
+            """INSERT INTO users(user_id, username, name, created, last_seen) VALUES(?,?,?,?,?)
+               ON CONFLICT(user_id) DO UPDATE SET username=excluded.username, name=excluded.name, last_seen=excluded.last_seen""",
+            (user_id, username, name, time.time(), time.time()))
         await self.db.commit()
 
     async def get_mode(self, user_id: int) -> str:
@@ -147,14 +172,113 @@ class Database:
     async def payment_exists(self, charge_id: str) -> bool:
         return bool(await self._scalar("SELECT 1 FROM payments WHERE charge_id=?", (charge_id,)))
 
+    # ---------- language, bans ----------
+    async def get_lang(self, user_id: int) -> str | None:
+        async with self.db.execute("SELECT lang FROM users WHERE user_id=?", (user_id,)) as cur:
+            row = await cur.fetchone()
+            return row["lang"] if row else None
+
+    async def set_lang(self, user_id: int, lang: str) -> None:
+        await self.db.execute("UPDATE users SET lang=? WHERE user_id=?", (lang, user_id))
+        await self.db.commit()
+
+    async def is_banned(self, user_id: int) -> bool:
+        return bool(await self._scalar("SELECT banned FROM users WHERE user_id=?", (user_id,)))
+
+    async def set_banned(self, user_id: int, banned: bool) -> None:
+        await self.db.execute("UPDATE users SET banned=? WHERE user_id=?", (int(banned), user_id))
+        await self.db.commit()
+
+    # ---------- admins ----------
+    async def is_admin(self, user_id: int) -> bool:
+        return bool(await self._scalar("SELECT 1 FROM admins WHERE user_id=?", (user_id,)))
+
+    async def add_admin(self, user_id: int, username: str | None) -> None:
+        await self.db.execute(
+            "INSERT INTO admins(user_id, username, added) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET username=excluded.username",
+            (user_id, username, time.time()))
+        await self.db.commit()
+
+    async def remove_admin(self, user_id: int) -> None:
+        await self.db.execute("DELETE FROM admins WHERE user_id=?", (user_id,))
+        await self.db.commit()
+
+    async def admin_rows(self) -> list[dict]:
+        async with self.db.execute("SELECT user_id, username FROM admins ORDER BY added") as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+    # ---------- user lookup ----------
+    async def find_user(self, query: str) -> dict | None:
+        q = query.strip().lstrip("@")
+        if q.isdigit():
+            sql, arg = "SELECT * FROM users WHERE user_id=?", int(q)
+        else:
+            sql, arg = "SELECT * FROM users WHERE lower(username)=lower(?)", q
+        async with self.db.execute(sql, (arg,)) as cur:
+            row = await cur.fetchone()
+        return dict(row) if row else None
+
+    async def recent_users(self, limit: int = 15, offset: int = 0) -> list[dict]:
+        async with self.db.execute("SELECT * FROM users ORDER BY created DESC LIMIT ? OFFSET ?", (limit, offset)) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+    async def broadcast_ids(self) -> list[int]:
+        async with self.db.execute("SELECT user_id FROM users WHERE banned=0") as cur:
+            return [r["user_id"] for r in await cur.fetchall()]
+
+    async def user_requests(self, user_id: int) -> int:
+        return await self._scalar("SELECT COALESCE(SUM(n),0) FROM usage WHERE user_id=?", (user_id,))
+
+    # ---------- support tickets ----------
+    async def create_ticket(self, user_id: int, text: str) -> int:
+        cur = await self.db.execute("INSERT INTO tickets(user_id, text, created) VALUES(?,?,?)", (user_id, text, time.time()))
+        await self.db.commit()
+        return cur.lastrowid
+
+    async def get_ticket(self, ticket_id: int) -> dict | None:
+        async with self.db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)) as cur:
+            row = await cur.fetchone()
+        return dict(row) if row else None
+
+    async def open_tickets(self, limit: int = 10) -> list[dict]:
+        async with self.db.execute("SELECT * FROM tickets WHERE status='open' ORDER BY id LIMIT ?", (limit,)) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+    async def open_tickets_of(self, user_id: int) -> int:
+        return await self._scalar("SELECT COUNT(*) FROM tickets WHERE user_id=? AND status='open'", (user_id,))
+
+    async def set_ticket_status(self, ticket_id: int, status: str) -> None:
+        await self.db.execute("UPDATE tickets SET status=?, answered=? WHERE id=?", (status, time.time(), ticket_id))
+        await self.db.commit()
+
+    async def link_ticket_msg(self, chat_id: int, message_id: int, ticket_id: int) -> None:
+        await self.db.execute("INSERT OR REPLACE INTO ticket_msgs(chat_id, message_id, ticket_id) VALUES(?,?,?)",
+                              (chat_id, message_id, ticket_id))
+        await self.db.commit()
+
+    async def ticket_by_msg(self, chat_id: int, message_id: int) -> int | None:
+        v = await self._scalar("SELECT ticket_id FROM ticket_msgs WHERE chat_id=? AND message_id=?", (chat_id, message_id))
+        return v or None
+
     # ---------- stats ----------
-    async def stats(self) -> dict[str, int]:
+    async def stats(self) -> dict:
         now = time.time()
-        return {
+        day = now - now % 86400                                  # start of the current UTC day
+        d = {
             "users": await self._scalar("SELECT COUNT(*) FROM users"),
+            "new_today": await self._scalar("SELECT COUNT(*) FROM users WHERE created>=?", (day,)),
+            "new_7d": await self._scalar("SELECT COUNT(*) FROM users WHERE created>=?", (now - 7 * 86400,)),
             "paid": await self._scalar("SELECT COUNT(*) FROM users WHERE paid_until>?", (now,)),
+            "banned": await self._scalar("SELECT COUNT(*) FROM users WHERE banned=1"),
             "requests_today": await self._scalar("SELECT COALESCE(SUM(n),0) FROM usage WHERE day=?", (today(),)),
+            "requests_total": await self._scalar("SELECT COALESCE(SUM(n),0) FROM usage"),
             "active_today": await self._scalar("SELECT COUNT(*) FROM usage WHERE day=?", (today(),)),
+            "active_7d": await self._scalar("SELECT COUNT(*) FROM users WHERE last_seen>=?", (now - 7 * 86400,)),
             "payments": await self._scalar("SELECT COUNT(*) FROM payments"),
             "stars": await self._scalar("SELECT COALESCE(SUM(stars),0) FROM payments"),
+            "tickets_open": await self._scalar("SELECT COUNT(*) FROM tickets WHERE status='open'"),
+            "tickets_total": await self._scalar("SELECT COUNT(*) FROM tickets"),
         }
+        async with self.db.execute("SELECT COALESCE(lang,'-') AS l, COUNT(*) AS n FROM users GROUP BY l") as cur:
+            d["langs"] = {r["l"]: r["n"] for r in await cur.fetchall()}
+        return d

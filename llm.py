@@ -20,11 +20,15 @@ GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
 class AssistantError(Exception):
-    """An error whose message can be shown to the user as is."""
+    """A failure the user is told about. `key` names the translated message (i18n: err_<key>)."""
+
+    def __init__(self, key: str) -> None:
+        super().__init__(key)
+        self.key = key
 
 
 class Retry(Exception):
-    """Internal: a temporary failure worth another attempt; carries the text shown if every attempt fails."""
+    """Internal: a temporary failure worth another attempt; carries the error key shown if every attempt fails."""
 
 
 class Assistant:
@@ -65,25 +69,23 @@ class Assistant:
             kept.pop(0)
         return kept
 
-    async def ask(self, user_id: int, text: str, *, mode: str, paid: bool, stored: str | None = None) -> str:
+    async def ask(self, user_id: int, text: str, *, mode: str, paid: bool, lang: str = "ru",
+                  stored: str | None = None) -> tuple[str, bool]:
         """`text` goes to the model in full; `stored` (shorter) is what is kept in the history."""
         if not self.ready:
-            raise AssistantError("Ассистент пока не подключён: администратору нужно указать GEMINI_API_KEY.")
+            raise AssistantError("not_ready")
         await self.db.add_message(user_id, "user", (stored or text)[:STORED_USER_CHARS])
         history = await self._context(user_id)
         if history:                                         # send the full text of this turn, not the shortened copy
             history[-1] = {"role": "user", "content": text}
         max_tokens = self.s.paid_max_tokens if paid else self.s.free_max_tokens
         try:
-            answer, truncated = await self._call(build_system(mode, "paid" if paid else "free"), history, max_tokens)
+            answer, truncated = await self._call(build_system(mode, "paid" if paid else "free", lang), history, max_tokens)
         except Exception:
             await self.db.drop_last_user_message(user_id)
             raise
-        if truncated:
-            answer += ("\n\n…ответ обрезан лимитом тарифа. Напишите «продолжи», чтобы получить следующую часть"
-                       + ("" if paid else ", а полные объёмные ответы доступны по подписке: /subscribe") + ".")
         await self.db.add_message(user_id, "assistant", answer)
-        return answer
+        return answer, truncated
 
     # ---------- providers ----------
     async def _once(self, system: str, messages: list[dict], max_tokens: int) -> tuple[str, bool]:
@@ -98,12 +100,12 @@ class Assistant:
                     max_tokens=max_tokens if gemini else min(max_tokens, 8192), temperature=0.7, timeout=240,
                     messages=[{"role": "system", "content": system}, *messages], **extra)
             except openai.RateLimitError as e:
-                raise Retry("Сервис сейчас перегружен запросами. Попробуйте через минуту.") from e
+                raise Retry("overloaded") from e
             except openai.APIStatusError as e:
                 self._fatal_status(e.status_code, e)
-                raise Retry("ИИ-сервис временно перегружен. Попробуйте ещё раз через минуту.") from e
+                raise Retry("overloaded") from e
             except (openai.APIConnectionError, openai.APITimeoutError) as e:
-                raise Retry("Нет связи с ИИ-сервисом. Попробуйте ещё раз.") from e
+                raise Retry("connection") from e
             choice = resp.choices[0]
             return (choice.message.content or "").strip(), choice.finish_reason == "length"
         import anthropic
@@ -111,12 +113,12 @@ class Assistant:
             resp = await self.client.messages.create(model=self.s.model, max_tokens=max_tokens, system=system,
                                                      messages=messages, timeout=240)
         except anthropic.RateLimitError as e:
-            raise Retry("Сервис сейчас перегружен запросами. Попробуйте через минуту.") from e
+            raise Retry("overloaded") from e
         except anthropic.APIStatusError as e:
             self._fatal_status(e.status_code, e)
-            raise Retry("ИИ-сервис временно перегружен. Попробуйте ещё раз через минуту.") from e
+            raise Retry("overloaded") from e
         except anthropic.APIConnectionError as e:
-            raise Retry("Нет связи с ИИ-сервисом. Попробуйте ещё раз.") from e
+            raise Retry("connection") from e
         text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
         return text, resp.stop_reason == "max_tokens"
 
@@ -124,13 +126,13 @@ class Assistant:
     def _fatal_status(code: int, err: Exception) -> None:
         if code in (401, 403):
             log.error("The AI provider rejected the API key (%s)", code)
-            raise AssistantError("Ассистент временно недоступен: проблема с доступом к ИИ-сервису.") from err
+            raise AssistantError("access") from err
         if code == 402:
             log.error("The AI provider reports an insufficient balance")
-            raise AssistantError("Ассистент временно недоступен: закончился баланс ИИ-сервиса. Администратор уже может это исправить.") from err
+            raise AssistantError("balance") from err
         if code in (400, 422):
             log.error("The AI provider rejected the request: %s", err)
-            raise AssistantError("Не удалось обработать запрос. Попробуйте сократить сообщение.") from err
+            raise AssistantError("bad_request") from err
 
     async def _call(self, system: str, messages: list[dict], max_tokens: int) -> tuple[str, bool]:
         delay = 2.0
@@ -145,6 +147,6 @@ class Assistant:
                 delay *= 2
                 continue
             if not text:
-                raise AssistantError("Модель вернула пустой ответ. Попробуйте переформулировать вопрос.")
+                raise AssistantError("empty")
             return text, truncated
-        raise AssistantError("Не удалось получить ответ.")
+        raise AssistantError("overloaded")

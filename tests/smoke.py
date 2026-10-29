@@ -1,17 +1,19 @@
 """End-to-end check against fake Telegram and fake Claude: python tests/smoke.py"""
 import asyncio, io, os, sys, tempfile, time
 os.environ.update(BOT_TOKEN="123456:TEST", ANTHROPIC_API_KEY="test", DB_PATH=tempfile.mktemp(suffix=".db"),
-                  ADMIN_IDS="900", FREE_DAILY="3", PAID_DAILY="6", PRICE_STARS="300")
+                  ADMIN_IDS="900", ADMIN_USERNAMES="ArtyomGlupech", FREE_DAILY="3", PAID_DAILY="6", PRICE_STARS="300")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from types import SimpleNamespace as NS
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Update, Message, Chat, File
+from aiogram.types import Update, Message, Chat, File, MessageId
 import fmt
 from config import Settings
 from db import Database
 from handlers import router
+import admin, support
+from access import Access
 from llm import Assistant
 
 # ---------- formatting ----------
@@ -48,6 +50,7 @@ class Mock(BaseSession):
     async def make_request(self, bot, method, timeout=None):
         name = method.__api_method__; calls.append((name, method.model_dump(exclude_none=True)))
         if name == "getFile": return File(file_id="f", file_unique_id="u", file_path="docs/a.txt")
+        if name == "copyMessage": return MessageId(message_id=len(calls) + 5000)
         if name in ("sendMessage", "sendInvoice"):
             return Message(message_id=len(calls), date=int(time.time()), chat=Chat(id=method.chat_id, type="private")).as_(bot)
         return True
@@ -74,17 +77,23 @@ async def main():
 
 async def body(s, db):
     ai = Assistant(s, db); fake = FakeMessages(); ai.client = NS(messages=fake)
-    bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s); dp.include_router(router)
+    bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s)
+    acc = Access(db, s); dp.message.outer_middleware(acc); dp.callback_query.outer_middleware(acc)
+    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(router)
     async def feed(d):
         calls.clear(); await dp.feed_update(bot, Update.model_validate(d, context={"bot": bot})); return list(calls)
     texts = lambda r: [c[1].get("text", "") for c in r if c[0] == "sendMessage"]
     U = 100
-    r = await feed(msg(U, "/start")); print("start:", texts(r)[0][:50].replace("\n", " "), "| menu buttons:", len(r[0][1]["reply_markup"]["keyboard"]) * 2)
+    r = await feed(msg(U, "/start")); assert "inline_keyboard" in r[0][1]["reply_markup"] and len(r[0][1]["reply_markup"]["inline_keyboard"]) == 3
+    print("start asks language:", texts(r)[0][:40])
+    r = await feed(cb(U, "lang:ru")); welcome = [x for x in texts(r) if "OmniStudent" in x]; assert welcome and len(r[-1][1]["reply_markup"]["keyboard"]) == 4
+    print("language ru + welcome ok, menu rows:", len(r[-1][1]["reply_markup"]["keyboard"]))
     r = await feed(msg(U, "✍️ Писать работу")); print("mode intro:", texts(r)[0][:40])
     r = await feed(msg(U, "Курсовая по маркетингу, 30 страниц")); out = texts(r)
     print("answer html:", out[0].replace("\n", " | "))
     c = fake.calls[-1]
     assert "OmniStudent" in c["system"] and "Академический писатель" in c["system"] and "Тариф: бесплатный" in c["system"], "prompt parts"
+    assert "интерфейса пользователя: русский" in c["system"]
     assert c["max_tokens"] == s.free_max_tokens and c["messages"][-1]["role"] == "user"
     print("system prompt ok, free max_tokens =", c["max_tokens"])
     r = await feed(msg(U, "А теперь план"))
@@ -100,23 +109,70 @@ async def body(s, db):
     r = await feed(bad); print("wrong amount rejected:", [c[1]["ok"] for c in r if c[0] == "answerPreCheckoutQuery"])
     pay = msg(U, successful_payment={"currency": "XTR", "total_amount": 300, "invoice_payload": f"sub:{U}", "telegram_payment_charge_id": "ch1", "provider_payment_charge_id": "pp"})
     r = await feed(pay); print("paid:", texts(r)[0][:60]); assert await db.is_paid(U)
-    await feed(pay); assert len(await db._scalar("SELECT COUNT(*) FROM payments") and [1]) == 1 and await db._scalar("SELECT COUNT(*) FROM payments") == 1, "duplicate payment update must not extend twice"
+    await feed(pay); assert await db._scalar("SELECT COUNT(*) FROM payments") == 1, "duplicate payment update must not extend twice"
     r = await feed(msg(U, "после оплаты")); assert fake.calls[-1]["max_tokens"] == s.paid_max_tokens and "Тариф: подписка" in fake.calls[-1]["system"]
     print("paid plan: max_tokens =", fake.calls[-1]["max_tokens"])
-    r = await feed(msg(U, "ОШИБКА")); print("API error shown nicely:", texts(r)[0][:70])
+    r = await feed(msg(U, "ОШИБКА")); print("API error shown nicely:", texts(r)[0][:70]); assert "перегружен" in texts(r)[0]
     assert len(await db.history(U, 50)) % 2 == 0, "failed question must not stay in history"
-    # exam mode, files
     r = await feed(cb(U, "mode:exam")); r = await feed(msg(U, "Начинай, тема: цифровой маркетинг")); assert "Вредный преподаватель" in fake.calls[-1]["system"]; print("exam mode prompt ok")
     doc = msg(U, document={"file_id": "f", "file_unique_id": "u", "file_name": "lecture.txt", "file_size": 100}, caption="Сделай шпаргалку")
     r = await feed(doc); last = fake.calls[-1]["messages"][-1]["content"]; assert "Лекция: интеграл" in last and "Сделай шпаргалку" in last; print("document read ok, sent to model:", last[:50].replace("\n", " "))
     r = await feed(msg(U, document={"file_id": "f", "file_unique_id": "u", "file_name": "photo.png", "file_size": 100})); print("unsupported file:", texts(r)[0][:50])
-    # admin
-    r = await feed(msg(555, "/stats")); assert not r, "non-admin must get no reply"
-    r = await feed(msg(900, "/stats")); print("admin stats:", texts(r)[0].replace("\n", " | "))
-    r = await feed(msg(900, "/grant 555 30")); print("grant:", texts(r)[0])
-    assert await db.is_paid(555)
     r = await feed(msg(U, "/new")); assert await db.history(U) == []; print("/new clears history ok")
     r = await feed(msg(U, "/paysupport")); print("paysupport:", texts(r)[0][:40])
+
+    # ---------- three languages ----------
+    V, W = 200, 300
+    await feed(msg(V, "/start")); r = await feed(cb(V, "lang:uz")); assert any("Salom" in x for x in texts(r)); print("uz welcome ok")
+    r = await feed(msg(V, "🆘 Yordam xizmati")); assert "Yordam xizmati" in texts(r)[0]; print("uz support entry ok")
+    await feed(msg(V, "/cancel"))
+    await feed(msg(V, "Salom, kurs ishi kerak")); assert "o'zbekcha" in fake.calls[-1]["system"]; print("uz system hint ok")
+    await feed(msg(W, "/start")); r = await feed(cb(W, "lang:en")); assert any("Hi! I'm OmniStudent" in x for x in texts(r)); print("en welcome ok")
+    r = await feed(msg(W, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("en mode button ok")
+    r = await feed(msg(V, "/subscribe")); assert "Bepul tarif" in texts(r)[0]; print("uz subscription text ok")
+    r = await feed(msg(V, "🌐 Til")); assert "inline_keyboard" in r[0][1]["reply_markup"]; print("language button ok")
+
+    # ---------- support desk ----------
+    r = await feed(msg(W, "/support")); assert "Support" in texts(r)[0]
+    r = await feed(msg(W, "My payment did not go through")); assert "Request <b>#1</b>" in texts(r)[-1], texts(r); 
+    to_admin = [c for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == 900]; assert to_admin and "Обращение #1" in to_admin[0][1]["text"]
+    print("ticket created, admin notified:", to_admin[0][1]["text"].replace("\n", " | ")[:90])
+    assert await db.open_tickets_of(W) == 1
+    # admin by username becomes admin on first message
+    A_ID = 777
+    a_msg = msg(A_ID, "/stats"); a_msg["message"]["from"]["username"] = "artyomglupech"
+    r = await feed(a_msg); assert await db.is_admin(A_ID); txt = texts(r)[0]; print("username admin:", txt.replace("\n", " | ")[:120])
+    assert "Пользователей всего" in txt
+    r = await feed(msg(555, "/stats")); assert "Пользователей всего" not in " ".join(texts(r)), "non-admin must not see stats"
+    # admin replies through the button and by swipe
+    r = await feed(cb(900, "tk:reply:1")); r = await feed(msg(900, "Please retry now, fixed")); 
+    out = [c for c in r if c[0] == "sendMessage" and c[1]["chat_id"] == W]; assert out and "Support reply to request #1" in out[0][1]["text"]; print("reply delivered in English:", out[0][1]["text"][:60].replace("\n", " "))
+    assert (await db.get_ticket(1))["status"] == "answered"
+    r = await feed(msg(W, "/support")); await feed(msg(W, "Second problem"))
+    await db.link_ticket_msg(900, 4242, 2)
+    r = await feed(msg(900, "Done", reply_to_message={"message_id": 4242, "date": int(time.time()), "chat": {"id": 900, "type": "private"}}))
+    assert any(c[0] == "sendMessage" and c[1]["chat_id"] == W and "request #2" in c[1]["text"] for c in r); print("swipe-reply ok")
+    r = await feed(msg(900, "/tickets")); print("tickets:", texts(r)[0].replace("\n", " | ")[:70])
+    # limit of open tickets
+    for i in range(4):
+        await feed(msg(W, "/support")); r = await feed(msg(W, f"again {i}"))
+    assert await db.open_tickets_of(W) == 3 and "several requests" in texts(r)[-1]; print("open-ticket limit ok")
+
+    # ---------- admin tools ----------
+    r = await feed(msg(900, "/stats")); print("admin stats:", texts(r)[0].replace("\n", " | "))
+    r = await feed(msg(900, "/users")); assert "Пользователи:" in texts(r)[0]; print("users list ok:", texts(r)[0].count("•"), "rows")
+    r = await feed(msg(900, "/user @u100")); assert "Запросов всего" in texts(r)[0]; print("user card ok")
+    r = await feed(msg(900, "/grant 555 30")); print("grant:", texts(r)[0]); assert await db.is_paid(555)
+    r = await feed(msg(900, f"/ban {V}")); assert "заблокирован" in texts(r)[0]
+    r = await feed(msg(V, "hello")); assert "ограничен" in texts(r)[0] or "cheklangan" in texts(r)[0]; print("banned user blocked:", texts(r)[0])
+    r = await feed(msg(900, f"/unban {V}")); r = await feed(msg(V, "Salom")); assert "o'zbekcha" in fake.calls[-1]["system"]; print("unban ok")
+    r = await feed(msg(900, f"/ban 900")); assert "нельзя" in texts(r)[0]
+    r = await feed(msg(777, "/addadmin 100")); assert "только владелец" in texts(r)[0]; print("only owner adds admins ok")
+    r = await feed(msg(900, "/addadmin 100")); assert await db.is_admin(100); r = await feed(msg(900, "/rmadmin 100")); assert not await db.is_admin(100)
+    await feed(msg(900, "/broadcast")); r = await feed(msg(900, "Всем привет, обновление бота")); assert "Отправить это сообщение" in texts(r)[0]
+    r = await feed(cb(900, "bc:go")); done = [x for x in texts(r) if "Готово" in x]; assert done; print("broadcast:", done[0])
+    sent = [c for c in r if c[0] == "copyMessage"]; assert len(sent) >= 4 and all(c[1]["from_chat_id"] == 900 for c in sent)
+    r = await feed(msg(900, "/admins")); assert "artyomglupech" in texts(r)[0] or "777" in texts(r)[0]; print("admins list ok")
     print("ALL OK")
 async def runner():
     try:

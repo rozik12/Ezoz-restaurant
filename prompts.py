@@ -63,6 +63,14 @@ PLAN_HINTS = {
 WORDS = {"free": 450, "paid": 2800}
 
 
-def build_system(mode: str, plan: str) -> str:
-    parts = [SYSTEM_PROMPT, TELEGRAM_FORMAT, MODE_HINTS.get(mode, ""), PLAN_HINTS[plan].format(words=WORDS[plan])]
+LANG_HINTS = {
+    "ru": "Язык интерфейса пользователя: русский. Отвечай на языке его сообщения, а если язык неясен, на русском.",
+    "uz": "Foydalanuvchi interfeysi tili: o'zbekcha (lotin). Foydalanuvchi xabari tilida javob ber, til noaniq bo'lsa o'zbek tilida.",
+    "en": "The user's interface language is English. Reply in the language of the user's message; if unclear, in English.",
+}
+
+
+def build_system(mode: str, plan: str, lang: str = "ru") -> str:
+    parts = [SYSTEM_PROMPT, TELEGRAM_FORMAT, LANG_HINTS.get(lang, LANG_HINTS["ru"]), MODE_HINTS.get(mode, ""),
+             PLAN_HINTS[plan].format(words=WORDS[plan])]
     return "\n\n".join(p for p in parts if p)
