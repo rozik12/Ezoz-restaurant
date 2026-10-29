@@ -103,6 +103,9 @@ class Database:
         for col, ddl in (("lang", "TEXT"), ("banned", "INTEGER NOT NULL DEFAULT 0"), ("last_seen", "REAL NOT NULL DEFAULT 0"), ("balance", "INTEGER NOT NULL DEFAULT 0")):
             if col not in cols:                               # upgrade a database created by an older version
                 await self._db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
+        async with self._db.execute("PRAGMA table_info(card_payments)") as cur:
+            if "stars" not in {r["name"] for r in await cur.fetchall()}:
+                await self._db.execute("ALTER TABLE card_payments ADD COLUMN stars INTEGER NOT NULL DEFAULT 0")
         await self._db.commit()
 
     async def close(self) -> None:
