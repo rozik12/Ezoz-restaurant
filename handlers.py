@@ -54,7 +54,7 @@ async def start(message: Message, db: Database, settings: Settings, lang: str) -
     if await db.get_lang(u.id) is None:                       # first visit: ask for the language
         await message.answer(t(DEFAULT_LANG, "choose_lang"), reply_markup=kb.lang_choice())
         return
-    await message.answer(t(lang, "welcome", free=settings.free_actions), reply_markup=kb.main_menu(lang))
+    await message.answer(welcome_text(settings, lang), reply_markup=kb.main_menu(lang))
 
 
 @router.message(Command("lang"))
@@ -76,13 +76,19 @@ async def lang_pick(call: CallbackQuery, db: Database, settings: Settings) -> No
         await call.message.delete()
     except TelegramBadRequest:
         pass
-    await call.message.answer(t(code, "welcome", free=settings.free_actions), reply_markup=kb.main_menu(code))
+    await call.message.answer(welcome_text(settings, code), reply_markup=kb.main_menu(code))
     await call.message.answer(guide_text(settings, code), reply_markup=kb.main_menu(code))      # what the bot can do, right after the language is chosen
 
 
+def welcome_text(settings: Settings, lang: str) -> str:
+    n = settings.free_actions
+    return t(lang, "welcome", pay_intro=t(lang, "intro_free_welcome", free=n) if n > 0 else t(lang, "intro_welcome"))
+
+
 def guide_text(settings: Settings, lang: str) -> str:
-    p = settings.prices
-    return t(lang, "guide", free=settings.free_actions, chat=p["chat"], slides=p["slides"], detect=p["detect"], convert=p["convert"])
+    p, n = settings.prices, settings.free_actions
+    return t(lang, "guide", pay_intro=t(lang, "intro_free_guide", free=n) if n > 0 else t(lang, "intro_guide"),
+             chat=p["chat"], slides=p["slides"], detect=p["detect"], convert=p["convert"])
 
 
 @router.message(Command("guide"))

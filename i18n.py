@@ -26,7 +26,7 @@ S: dict[str, tuple[str, str, str]] = {
         "📝 редактирую, делаю рерайт и перевожу научные тексты\n"
         "🎓 делаю шпаргалки и устраиваю «Вредного преподавателя» перед защитой\n\n"
         "Выберите режим в меню или просто напишите вопрос. Файлы .txt, .pdf и .docx тоже читаю.\n"
-        "Бесплатных действий для начала: <b>{free}</b>, дальше оплата из кошелька «💰» в ⭐.\n"
+        "{pay_intro}"
         "Нужна помощь по боту? Кнопка «🆘 Поддержка».",
         "👋 <b>Salom! Men Uni Prof</b>man, talabalar uchun akademik yordamchi.\n\n"
         "✍️ kurs ishi, referat, esse va ish rejalarini yozaman\n"
@@ -34,7 +34,7 @@ S: dict[str, tuple[str, str, str]] = {
         "📝 ilmiy matnlarni tahrirlayman, qayta yozaman va tarjima qilaman\n"
         "🎓 shpargalka tayyorlayman va himoya oldidan «Qattiq o'qituvchi» bo'laman\n\n"
         "Menyudan rejimni tanlang yoki shunchaki savol yozing. .txt, .pdf va .docx fayllarni ham o'qiyman.\n"
-        "Boshlash uchun bepul harakatlar: <b>{free}</b>, keyin «💰» hamyonidan ⭐ bilan to'lanadi.\n"
+        "{pay_intro}"
         "Bot bo'yicha yordam kerakmi? «🆘 Yordam xizmati» tugmasi.",
         "👋 <b>Hi! I'm Uni Prof</b>, an academic assistant for students.\n\n"
         "✍️ I write term papers, reports, essays and outlines\n"
@@ -42,7 +42,7 @@ S: dict[str, tuple[str, str, str]] = {
         "📝 I edit, rewrite and translate academic texts\n"
         "🎓 I make cheat sheets and play the «Tough Professor» before your defense\n\n"
         "Pick a mode in the menu or just ask a question. I can read .txt, .pdf and .docx files too.\n"
-        "Free actions to start with: <b>{free}</b>, then you pay from the «💰» wallet in ⭐.\n"
+        "{pay_intro}"
         "Need help with the bot? Tap «🆘 Support».",
     ),
     "help": (

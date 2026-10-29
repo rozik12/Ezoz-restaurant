@@ -71,7 +71,7 @@ class Settings:
             topup_presets=tuple(int(x) for x in os.getenv("TOPUP_PRESETS", "50,100,250,500,1000").replace(" ", "").split(",") if x.isdigit()),
             topup_max=min(_int("TOPUP_MAX", 10000), 10000),                      # Telegram's ceiling for one Stars invoice
             welcome_bonus=_int("WELCOME_BONUS", 0),
-            free_actions=_int("FREE_ACTIONS", 3),                                # per user, once, before the wallet is charged
+            free_actions=_int("FREE_ACTIONS", 0),                                # per user, once, before the wallet is charged
             uzs_per_star=_int("UZS_PER_STAR", 0),
             card_number=os.getenv("CARD_NUMBER", "").strip(),
             card_holder=os.getenv("CARD_HOLDER", "").strip(),

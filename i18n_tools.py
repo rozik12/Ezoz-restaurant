@@ -56,7 +56,7 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "🔁 <b>Конвертер</b>: .docx, .pdf, .txt, .md, .pptx переводятся друг в друга, а фото в PDF.\n"
         "🕵️ <b>Проверка на ИИ</b>: оценка текста и советы, как сделать его по-настоящему своим.\n\n"
         "<b>3. Оплата</b>\n"
-        "🎁 Бесплатных действий для начала: <b>{free}</b>. Дальше оплата из кошелька в ⭐: вопрос {chat} ⭐, слайды {slides} ⭐, "
+        "{pay_intro} вопрос {chat} ⭐, слайды {slides} ⭐, "
         "проверка на ИИ {detect} ⭐, конвертация {convert} ⭐. Если действие не удалось, звёзды возвращаются.\n"
         "💰 <b>Кошелёк</b> пополняется на любую сумму от 1 ⭐. Как купить Stars: /stars\n\n"
         "<b>4. Полезное</b>\n"
@@ -76,7 +76,7 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "🔁 <b>Konvertor</b>: .docx, .pdf, .txt, .md, .pptx bir-biriga, rasmlar esa PDF ga o'tkaziladi.\n"
         "🕵️ <b>AI tekshiruvi</b>: matnni baholash va uni haqiqatan o'zingiznikiga aylantirish bo'yicha maslahatlar.\n\n"
         "<b>3. To'lov</b>\n"
-        "🎁 Boshlash uchun bepul harakatlar: <b>{free}</b>. Keyin hamyondan ⭐ bilan to'lanadi: savol {chat} ⭐, slaydlar {slides} ⭐, "
+        "{pay_intro} savol {chat} ⭐, slaydlar {slides} ⭐, "
         "AI tekshiruvi {detect} ⭐, konvertatsiya {convert} ⭐. Harakat bajarilmasa, yulduzlar qaytariladi.\n"
         "💰 <b>Hamyon</b> istalgan summaga, 1 ⭐ dan to'ldiriladi. Stars qanday sotib olinadi: /stars\n\n"
         "<b>4. Foydali</b>\n"
@@ -96,7 +96,7 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "🔁 <b>Converter</b>: .docx, .pdf, .txt, .md, .pptx convert to each other, and photos to PDF.\n"
         "🕵️ <b>AI check</b>: an estimate of a text plus tips to make it genuinely yours.\n\n"
         "<b>3. Payment</b>\n"
-        "🎁 Free actions to start with: <b>{free}</b>. After that you pay from the wallet in ⭐: a question {chat} ⭐, slides {slides} ⭐, "
+        "{pay_intro} a question {chat} ⭐, slides {slides} ⭐, "
         "AI check {detect} ⭐, conversion {convert} ⭐. If an action fails, the Stars are returned.\n"
         "💰 The <b>Wallet</b> tops up any amount from 1 ⭐. How to buy Stars: /stars\n\n"
         "<b>4. Handy</b>\n"
@@ -105,6 +105,19 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "🌐 <b>Language</b>: change the bot's language.\n\n"
         "💡 The more precise the task (topic, length, formatting standard, deadline), the better the result. Check the facts and sources in answers yourself. "
         "You can open this guide again with /guide."),
+    # ---- the free-action lines, shown only when FREE_ACTIONS > 0 ----
+    "intro_free_welcome": ("Бесплатных действий для начала: <b>{free}</b>, дальше оплата из кошелька «💰» в ⭐.\n",
+                           "Boshlash uchun bepul harakatlar: <b>{free}</b>, keyin «💰» hamyonidan ⭐ bilan to'lanadi.\n",
+                           "Free actions to start with: <b>{free}</b>, then you pay from the «💰» wallet in ⭐.\n"),
+    "intro_welcome": ("Действия оплачиваются из кошелька «💰» в ⭐.\n", "Harakatlar «💰» hamyonidan ⭐ bilan to'lanadi.\n",
+                      "Actions are paid from the «💰» wallet in ⭐.\n"),
+    "intro_free_guide": ("🎁 Бесплатных действий для начала: <b>{free}</b>. Дальше оплата из кошелька в ⭐:",
+                         "🎁 Boshlash uchun bepul harakatlar: <b>{free}</b>. Keyin hamyondan ⭐ bilan to'lanadi:",
+                         "🎁 Free actions to start with: <b>{free}</b>. After that you pay from the wallet in ⭐:"),
+    "intro_guide": ("Каждое действие оплачивается из кошелька в ⭐:", "Har bir harakat hamyondan ⭐ bilan to'lanadi:",
+                    "Every action is paid from the wallet in ⭐:"),
+    "wallet_free_line": ("🎁 Бесплатных действий осталось: <b>{free}</b>\n", "🎁 Qolgan bepul harakatlar: <b>{free}</b>\n",
+                         "🎁 Free actions left: <b>{free}</b>\n"),
     # ---- wallet ----
     "truncated": (
         "\n\n…ответ получился очень длинным и был обрезан. Напишите «продолжи», чтобы получить следующую часть (это отдельный вопрос по цене кошелька).",
@@ -112,13 +125,13 @@ TOOLS: dict[str, tuple[str, str, str]] = {
         "\n\n…the answer was very long and got cut. Write «continue» to get the next part (it counts as a separate question at the wallet price)."),
     "btn_sub": ("💰 Кошелёк", "💰 Hamyon", "💰 Wallet"),
     "wallet_text": (
-        "💰 <b>Ваш кошелёк</b>\n\nБаланс: <b>{balance} ⭐</b> (хватит примерно на {n} вопросов)\n🎁 Бесплатных действий осталось: <b>{free}</b>\n\n"
+        "💰 <b>Ваш кошелёк</b>\n\nБаланс: <b>{balance} ⭐</b> (хватит примерно на {n} вопросов)\n{free_line}\n"
         "<b>Стоимость действий</b>\n• вопрос ассистенту: {chat} ⭐\n• презентация: {slides} ⭐\n• проверка на ИИ: {detect} ⭐\n• конвертация файла: {convert} ⭐\n\n"
         "Пополнить можно на любую сумму, начиная с 1 ⭐: выберите вариант или нажмите «Другая сумма».",
-        "💰 <b>Sizning hamyoningiz</b>\n\nBalans: <b>{balance} ⭐</b> (taxminan {n} ta savolga yetadi)\n🎁 Qolgan bepul harakatlar: <b>{free}</b>\n\n"
+        "💰 <b>Sizning hamyoningiz</b>\n\nBalans: <b>{balance} ⭐</b> (taxminan {n} ta savolga yetadi)\n{free_line}\n"
         "<b>Harakatlar narxi</b>\n• yordamchiga savol: {chat} ⭐\n• taqdimot: {slides} ⭐\n• AI tekshiruvi: {detect} ⭐\n• faylni konvertatsiya qilish: {convert} ⭐\n\n"
         "Hamyonni istalgan summaga to'ldirish mumkin, 1 ⭐ dan boshlab: variantni tanlang yoki «Boshqa summa» ni bosing.",
-        "💰 <b>Your wallet</b>\n\nBalance: <b>{balance} ⭐</b> (enough for about {n} questions)\n🎁 Free actions left: <b>{free}</b>\n\n"
+        "💰 <b>Your wallet</b>\n\nBalance: <b>{balance} ⭐</b> (enough for about {n} questions)\n{free_line}\n"
         "<b>Cost of actions</b>\n• a question to the assistant: {chat} ⭐\n• a presentation: {slides} ⭐\n• an AI check: {detect} ⭐\n• a file conversion: {convert} ⭐\n\n"
         "You can top up any amount, starting from 1 ⭐: pick an option or tap «Other amount»."),
     "free_line": ("🎁 бесплатное действие, осталось: {left}", "🎁 bepul harakat, qoldi: {left}", "🎁 free action, left: {left}"),

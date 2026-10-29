@@ -93,7 +93,8 @@ async def body(s, db):
     print("start asks language:", texts(r)[0][:40])
     r = await feed(cb(U, "lang:ru")); welcome = [x for x in texts(r) if "Uni Prof" in x]; assert welcome and len(r[-1][1]["reply_markup"]["keyboard"]) == 6
     print("language ru + welcome ok, menu rows:", len(r[-1][1]["reply_markup"]["keyboard"]))
-    guide = [x for x in texts(r) if "Как пользоваться ботом" in x]; assert guide and "{" not in guide[0] and "<b>0</b>" in guide[0] and "50 ⭐" in guide[0]; print("guide sent right after the language choice:", guide[0][:30])
+    guide = [x for x in texts(r) if "Как пользоваться ботом" in x]; assert guide and "{" not in guide[0] and "Бесплатн" not in guide[0] and "оплачивается из кошелька" in guide[0] and "50 ⭐" in guide[0]; print("guide sent right after the language choice, no free actions mentioned:", guide[0][:30])
+    assert all("Бесплатных действий" not in x for x in texts(r)) and "{" not in "".join(texts(r)); r = await feed(msg(U, "/wallet")); assert "Бесплатн" not in texts(r)[0]; print("no free-action lines while FREE_ACTIONS=0")
     r = await feed(msg(U, "/guide")); assert "Как пользоваться ботом" in texts(r)[0]
     r = await feed(msg(U, "✍️ Писать работу")); print("mode intro:", texts(r)[0][:40])
     r = await feed(msg(U, "Курсовая по маркетингу, 30 страниц")); out = texts(r)
@@ -253,7 +254,7 @@ async def body(s, db):
     object.__setattr__(s, "free_actions", 3)                      # the rest of the run assumed a paid-only wallet
     F = 600
     r = await feed(msg(F, "/start")); await feed(cb(F, "lang:ru"))
-    r = await feed(msg(F, "/start")); assert any("Бесплатных действий для начала: <b>3</b>" in x for x in texts(r)); print("welcome mentions the 3 free actions")
+    r = await feed(msg(F, "/start")); assert any("Бесплатных действий для начала: <b>3</b>" in x for x in texts(r)); print("welcome mentions the free actions when they are on")
     r = await feed(msg(F, "/wallet")); assert "Бесплатных действий осталось: <b>3</b>" in texts(r)[0]
     r = await feed(msg(F, "Первый вопрос")); assert "🎁 бесплатное действие, осталось: 2" in texts(r)[0] and await db.balance(F) == 0; print("1st action free:", texts(r)[0][-45:].replace("\n", " "))
     before = await db.free_used(F); r = await feed(msg(F, "ОШИБКА")); assert await db.free_used(F) == before, "a failed free action must stay available"; print("failed free action is given back")
