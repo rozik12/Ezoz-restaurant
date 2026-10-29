@@ -86,7 +86,7 @@ async def body(s, db):
     ai = Assistant(s, db); fake = FakeMessages(); ai.client = NS(messages=fake)
     bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s)
     acc = Access(db, s); dp.message.outer_middleware(acc); dp.callback_query.outer_middleware(acc)
-    dp.include_router(admin.gate); dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(walletmod.router); dp.include_router(router)
+    dp.include_router(admin.info); dp.include_router(admin.gate); dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(walletmod.router); dp.include_router(router)
     async def feed(d):
         calls.clear(); await dp.feed_update(bot, Update.model_validate(d, context={"bot": bot})); return list(calls)
     texts = lambda r: [c[1].get("text", "") for c in r if c[0] == "sendMessage"]
@@ -252,6 +252,10 @@ async def body(s, db):
     r = await feed(cb(900, "bc:go")); done = [x for x in texts(r) if "Готово" in x]; assert done; print("broadcast:", done[0])
     sent = [c for c in r if c[0] == "copyMessage"]; assert len(sent) >= 4 and all(c[1]["from_chat_id"] == 900 for c in sent)
     r = await feed(msg(900, "/admins")); assert "artyomglupech" in texts(r)[0] or "777" in texts(r)[0]; print("admins list ok")
+    # ---------- /id tells who the bot thinks you are ----------
+    r = await feed(msg(900, "/id")); assert "900" in texts(r)[0] and "владелец" in texts(r)[0]
+    a_msg = msg(777, "/id"); a_msg["message"]["from"]["username"] = "artyomglupech"; r = await feed(a_msg); assert "администратор" in texts(r)[0]
+    r = await feed(msg(555, "/id")); assert "пользователь" in texts(r)[0] and "/admin" not in texts(r)[0]; print("/id shows the role:", texts(r)[0].replace("\n", " | "))
     # ---------- the admin's own interface ----------
     r = await feed(msg(900, "/start")); first = [c for c in r if c[0] == "sendMessage"][0]
     assert "Админка" in first[1]["text"] and len(first[1]["reply_markup"]["keyboard"]) == 6 and "✍️ Писать работу" not in str(first[1]["reply_markup"])

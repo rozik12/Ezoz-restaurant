@@ -34,6 +34,16 @@ router = Router(name="admin")
 router.message.filter(F.chat.type == ChatType.PRIVATE, AdminView())
 router.callback_query.filter(AdminView())
 
+info = Router(name="info")                          # /id for everybody: the ID and the role the bot assigns to it
+info.message.filter(F.chat.type == ChatType.PRIVATE)
+
+
+@info.message(Command("id"))
+async def whoami(message: Message, lang: str, is_admin: bool = False, is_owner: bool = False) -> None:
+    role = t(lang, "role_owner" if is_owner else "role_admin" if is_admin else "role_user")
+    await message.answer(t(lang, "your_id", id=message.from_user.id) + "\n" + t(lang, "role_line", role=role))
+
+
 gate = Router(name="admin-gate")                    # /admin works in both views: it brings an administrator back from the user's view
 gate.message.filter(F.chat.type == ChatType.PRIVATE, RealAdmin())
 

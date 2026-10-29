@@ -62,6 +62,7 @@ async def main() -> None:
     access = Access(db, settings)
     dp.message.outer_middleware(access)
     dp.callback_query.outer_middleware(access)
+    dp.include_router(admin.info)
     dp.include_router(admin.gate)
     dp.include_router(support.router)          # order matters: support dialog and admin tools come before the catch-all handlers
     dp.include_router(admin.router)

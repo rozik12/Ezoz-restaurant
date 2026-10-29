@@ -43,6 +43,11 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "card_rejected": ("❌ Платёж не подтверждён. Если это ошибка, нажмите «🆘 Поддержка» и приложите чек.",
                       "❌ To'lov tasdiqlanmadi. Xato bo'lsa, «🆘 Yordam xizmati» tugmasini bosing va chekni ilova qiling.",
                       "❌ The payment was not confirmed. If this is a mistake, tap «🆘 Support» and attach the receipt."),
+    # ---- /id ----
+    "role_line": ("Роль: <b>{role}</b>", "Rol: <b>{role}</b>", "Role: <b>{role}</b>"),
+    "role_owner": ("владелец (админка: /admin)", "egasi (admin paneli: /admin)", "owner (admin panel: /admin)"),
+    "role_admin": ("администратор (админка: /admin)", "administrator (admin paneli: /admin)", "administrator (admin panel: /admin)"),
+    "role_user": ("пользователь", "foydalanuvchi", "user"),
     # ---- guide ----
     "guide": (
         "📖 <b>Как пользоваться ботом</b>\n\n"
