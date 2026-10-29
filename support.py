@@ -57,13 +57,13 @@ async def cancel_support(message: Message, state: FSMContext, lang: str) -> None
     await message.answer(t(lang, "support_cancel"), reply_markup=kb.main_menu(lang))
 
 
-@router.message(StateFilter(Support.waiting), F.text.startswith("/"))
+@router.message(StateFilter(Support.waiting), F.text.startswith("/") | F.text.in_(kb.MENU_LABELS))
 async def other_command(message: Message, state: FSMContext) -> None:
-    await state.clear()                       # any other command leaves the support dialog and runs normally
+    await state.clear()                       # a command or another menu button leaves the support dialog and runs normally
     raise SkipHandler
 
 
-@router.message(StateFilter(Support.waiting))
+@router.message(StateFilter(Support.waiting), ~(F.text.startswith("/") | F.text.in_(kb.MENU_LABELS)))
 async def receive_ticket(message: Message, state: FSMContext, bot: Bot, db: Database, settings: Settings, lang: str) -> None:
     text = (message.text or message.caption or "").strip()
     has_media = bool(message.photo or message.document or message.video or message.voice)

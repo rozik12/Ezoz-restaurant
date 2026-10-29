@@ -1,0 +1,88 @@
+"""Texts of the free tools: slides, AI check, file converter (ru, uz, en)."""
+TOOLS: dict[str, tuple[str, str, str]] = {
+    "btn_slides": ("📊 Слайды", "📊 Slaydlar", "📊 Slides"),
+    "btn_detect": ("🕵️ Проверка на ИИ", "🕵️ AI tekshiruvi", "🕵️ AI check"),
+    "btn_convert": ("🔁 Конвертер", "🔁 Konvertor", "🔁 Converter"),
+    "tool_limit": (
+        "Бесплатный лимит на сегодня исчерпан ({n}). Он обновится завтра; у подписчиков лимит втрое больше (/subscribe).",
+        "Bugungi bepul limit tugadi ({n}). U ertaga yangilanadi; obunachilarda limit uch barobar ko'p (/subscribe).",
+        "Today's free limit is used up ({n}). It resets tomorrow; subscribers get three times more (/subscribe)."),
+    # ---- slides ----
+    "slides_intro": (
+        "📊 <b>Слайды бесплатно</b>\n\nНапишите тему презентации, можно с числом слайдов, например: <i>«Цифровой маркетинг, 12 слайдов»</i>. "
+        "Или пришлите файл (.txt, .pdf, .docx), и я сделаю презентацию по нему. Вы получите готовый .pptx для PowerPoint.\n\nОтмена: /cancel",
+        "📊 <b>Slaydlar bepul</b>\n\nTaqdimot mavzusini yozing, slaydlar sonini ham ko'rsatish mumkin, masalan: <i>«Raqamli marketing, 12 slayd»</i>. "
+        "Yoki fayl (.txt, .pdf, .docx) yuboring, men uning asosida taqdimot qilaman. PowerPoint uchun tayyor .pptx olasiz.\n\nBekor qilish: /cancel",
+        "📊 <b>Free slides</b>\n\nSend the presentation topic, optionally with a slide count, e.g. <i>\"Digital marketing, 12 slides\"</i>. "
+        "Or send a file (.txt, .pdf, .docx) and I'll build the deck from it. You get a ready .pptx for PowerPoint.\n\nCancel: /cancel"),
+    "slides_working": ("⏳ Делаю презентацию, это займёт около минуты…", "⏳ Taqdimot tayyorlanmoqda, taxminan bir daqiqa ketadi…",
+                       "⏳ Building your presentation, about a minute…"),
+    "slides_done": (
+        "✅ Готово: {n} слайдов. К каждому слайду есть заметки для выступления. Проверьте факты перед защитой.",
+        "✅ Tayyor: {n} ta slayd. Har bir slaydga chiqish uchun izohlar bor. Himoyadan oldin faktlarni tekshiring.",
+        "✅ Done: {n} slides. Every slide has speaker notes. Check the facts before presenting."),
+    "slides_fail": ("Не получилось собрать презентацию. Попробуйте переформулировать тему.", "Taqdimot tayyorlab bo'lmadi. Mavzuni boshqacha yozib ko'ring.",
+                    "Could not build the presentation. Try rephrasing the topic."),
+    "slides_short": ("Напишите тему подробнее или пришлите файл.", "Mavzuni batafsilroq yozing yoki fayl yuboring.", "Describe the topic in more detail or send a file."),
+    # ---- AI check ----
+    "detect_intro": (
+        "🕵️ <b>Проверка на ИИ</b>\n\nПришлите текст (от {n} знаков) или файл .txt, .pdf, .docx. Я оценю, насколько он похож на машинный, "
+        "покажу самые шаблонные фрагменты и подскажу, как сделать работу по-настоящему своей.\n\n"
+        "⚠️ Это ориентир, а не приговор: настоящие детекторы (Антиплагиат, Turnitin, GPTZero) работают иначе и могут показать другой результат.\n\nОтмена: /cancel",
+        "🕵️ <b>AI tekshiruvi</b>\n\nMatn ({n} belgidan) yoki .txt, .pdf, .docx fayl yuboring. Matn mashinaniki kabi ko'rinish darajasini baholayman, "
+        "eng shablon joylarni ko'rsataman va ishni haqiqatan o'zingizniki qilish bo'yicha maslahat beraman.\n\n"
+        "⚠️ Bu taxminiy ko'rsatkich, hukm emas: haqiqiy detektorlar (Antiplagiat, Turnitin, GPTZero) boshqacha ishlaydi va boshqa natija chiqarishi mumkin.\n\nBekor qilish: /cancel",
+        "🕵️ <b>AI check</b>\n\nSend a text (at least {n} characters) or a .txt, .pdf, .docx file. I'll estimate how machine-like it reads, "
+        "show the most generic passages and suggest how to make the work genuinely yours.\n\n"
+        "⚠️ This is an orientation, not a verdict: real detectors (Antiplagiat, Turnitin, GPTZero) work differently and may give another result.\n\nCancel: /cancel"),
+    "detect_working": ("⏳ Анализирую текст…", "⏳ Matn tahlil qilinmoqda…", "⏳ Analyzing the text…"),
+    "detect_short": ("Нужен текст от {n} знаков, иначе оценка будет случайной.", "Kamida {n} belgilik matn kerak, aks holda baho tasodifiy bo'ladi.",
+                     "I need at least {n} characters, otherwise the estimate is random."),
+    "detect_head": ("🕵️ <b>Результат: {p}% похоже на ИИ</b>\n{verdict}\n", "🕵️ <b>Natija: {p}% AI matniga o'xshaydi</b>\n{verdict}\n",
+                    "🕵️ <b>Result: {p}% looks AI-written</b>\n{verdict}\n"),
+    "verdict_low": ("Скорее написано человеком.", "Ko'proq inson yozganga o'xshaydi.", "More likely written by a person."),
+    "verdict_mid": ("Есть признаки машинного текста.", "Mashina matni belgilari bor.", "There are signs of machine-written text."),
+    "verdict_high": ("Текст читается как машинный.", "Matn mashina yozganidek o'qiladi.", "The text reads as machine-written."),
+    "detect_stats": (
+        "📏 Слов: {words}, предложений: {sentences}, средняя длина предложения: {avg}, разброс длины: {spread}, шаблонных связок на 1000 слов: {conn}.",
+        "📏 So'zlar: {words}, gaplar: {sentences}, o'rtacha gap uzunligi: {avg}, uzunlik tarqoqligi: {spread}, 1000 so'zga shablon bog'lovchilar: {conn}.",
+        "📏 Words: {words}, sentences: {sentences}, average sentence length: {avg}, length spread: {spread}, stock connectors per 1000 words: {conn}."),
+    "detect_signals": ("<b>Что бросается в глаза</b>", "<b>Nimalar ko'zga tashlanadi</b>", "<b>What stands out</b>"),
+    "detect_frags": ("<b>Самые шаблонные места</b>", "<b>Eng shablon joylar</b>", "<b>Most generic passages</b>"),
+    "detect_advice": ("<b>Как сделать текст своим</b>", "<b>Matnni o'zingiznikiga aylantirish</b>", "<b>How to make it your own</b>"),
+    "detect_note": (
+        "⚠️ Оценка приблизительная, гарантий не даёт ни один инструмент. Преподаватель оценивает и знание темы: будьте готовы объяснить работу своими словами.",
+        "⚠️ Baho taxminiy, hech bir vosita kafolat bermaydi. O'qituvchi mavzuni bilishingizni ham baholaydi: ishni o'z so'zlaringiz bilan tushuntirishga tayyor bo'ling.",
+        "⚠️ The estimate is approximate and no tool gives guarantees. Your teacher also judges your knowledge: be ready to explain the work in your own words."),
+    "detect_fail": ("Не удалось выполнить анализ. Попробуйте ещё раз.", "Tahlil qilib bo'lmadi. Qayta urinib ko'ring.", "The analysis failed. Please try again."),
+    # ---- converter ----
+    "convert_intro": (
+        "🔁 <b>Конвертер файлов</b>\n\nПришлите файл, и я предложу форматы для конвертации:\n"
+        "• .docx, .pdf, .txt, .md, .pptx переводятся друг в друга\n• фото и картинки (.jpg, .png) в PDF\n\n"
+        "Сохраняются заголовки, абзацы и списки; сложное оформление, таблицы и картинки внутри документов упрощаются. "
+        "PDF-сканы без текста не читаются.\n\nОтмена: /cancel",
+        "🔁 <b>Fayl konvertori</b>\n\nFayl yuboring, men konvertatsiya formatlarini taklif qilaman:\n"
+        "• .docx, .pdf, .txt, .md, .pptx bir-biriga o'tkaziladi\n• rasmlar (.jpg, .png) PDF ga\n\n"
+        "Sarlavhalar, abzaslar va ro'yxatlar saqlanadi; murakkab dizayn, jadvallar va hujjat ichidagi rasmlar soddalashtiriladi. "
+        "Matnsiz PDF-skanerlar o'qilmaydi.\n\nBekor qilish: /cancel",
+        "🔁 <b>File converter</b>\n\nSend a file and I'll offer the formats to convert it to:\n"
+        "• .docx, .pdf, .txt, .md, .pptx convert to each other\n• photos and images (.jpg, .png) to PDF\n\n"
+        "Headings, paragraphs and lists are kept; complex layout, tables and images inside documents are simplified. "
+        "Scanned PDFs without text cannot be read.\n\nCancel: /cancel"),
+    "convert_pick": ("Файл <b>{name}</b> получен. Во что конвертировать?", "<b>{name}</b> fayli qabul qilindi. Qaysi formatga o'tkazamiz?",
+                     "Got <b>{name}</b>. Convert to what?"),
+    "convert_working": ("⏳ Конвертирую…", "⏳ Konvertatsiya qilinmoqda…", "⏳ Converting…"),
+    "convert_done": ("✅ Готово: {name}", "✅ Tayyor: {name}", "✅ Done: {name}"),
+    "convert_expired": ("Файл не найден, пришлите его ещё раз.", "Fayl topilmadi, uni qayta yuboring.", "File not found, please send it again."),
+    "convert_fail": ("Не удалось конвертировать файл.", "Faylni konvertatsiya qilib bo'lmadi.", "The file could not be converted."),
+    "conv_err_unsupported": (
+        "Этот формат не поддерживается. Пришлите .docx, .pdf, .txt, .md, .pptx или картинку (.jpg, .png).",
+        "Bu format qo'llab-quvvatlanmaydi. .docx, .pdf, .txt, .md, .pptx yoki rasm (.jpg, .png) yuboring.",
+        "This format is not supported. Send .docx, .pdf, .txt, .md, .pptx or an image (.jpg, .png)."),
+    "conv_err_read": ("Не удалось прочитать файл. Проверьте, что он не повреждён и не защищён паролем.",
+                      "Faylni o'qib bo'lmadi. U shikastlanmagan va parol bilan himoyalanmaganini tekshiring.",
+                      "The file could not be read. Check that it is not damaged or password-protected."),
+    "conv_err_scan": ("В этом PDF нет текста (похоже, это скан). Пришлите PDF с текстом.", "Bu PDF da matn yo'q (skaner bo'lsa kerak). Matnli PDF yuboring.",
+                      "This PDF has no text (it looks like a scan). Send a PDF with text."),
+    "conv_err_empty": ("В файле нет текста для конвертации.", "Faylda konvertatsiya qilinadigan matn yo'q.", "The file has no text to convert."),
+}

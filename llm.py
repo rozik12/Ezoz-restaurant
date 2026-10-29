@@ -87,6 +87,13 @@ class Assistant:
         await self.db.add_message(user_id, "assistant", answer)
         return answer, truncated
 
+    async def complete(self, system: str, user: str, max_tokens: int = 4000) -> str:
+        """A single stateless request (tools: slides, AI check). Raises AssistantError like ask()."""
+        if not self.ready:
+            raise AssistantError("not_ready")
+        text, _ = await self._call(system, [{"role": "user", "content": user}], max_tokens)
+        return text
+
     # ---------- providers ----------
     async def _once(self, system: str, messages: list[dict], max_tokens: int) -> tuple[str, bool]:
         """One request. Raises Retry for temporary problems and AssistantError for fatal ones."""

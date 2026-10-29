@@ -12,7 +12,7 @@ import fmt
 from config import Settings
 from db import Database
 from handlers import router
-import admin, support
+import admin, support, tools
 from access import Access
 from llm import Assistant
 
@@ -33,6 +33,10 @@ class FakeMessages:
     async def create(self, **kw):
         self.calls.append(kw)
         text = "## План\n**Введение** и *выводы*\n- пункт"
+        if "student presentations" in kw["system"]:
+            text = '{"title":"Цифровой маркетинг","subtitle":"Курс","slides":[{"title":"Что это","bullets":["a","b","c"],"notes":"n"},{"title":"Итоги","bullets":["x"]}]}'
+        if "machine-written" in kw["system"]:
+            text = '{"ai_probability": 74, "signals":["Одинаковый ритм"], "fragments":[{"quote":"Таким образом","reason":"шаблон"}], "advice":["Добавьте примеры"]}'
         if "ОШИБКА" in kw["messages"][-1]["content"]:
             import anthropic
             try:
@@ -51,7 +55,7 @@ class Mock(BaseSession):
         name = method.__api_method__; calls.append((name, method.model_dump(exclude_none=True)))
         if name == "getFile": return File(file_id="f", file_unique_id="u", file_path="docs/a.txt")
         if name == "copyMessage": return MessageId(message_id=len(calls) + 5000)
-        if name in ("sendMessage", "sendInvoice"):
+        if name in ("sendMessage", "sendInvoice", "sendDocument"):
             return Message(message_id=len(calls), date=int(time.time()), chat=Chat(id=method.chat_id, type="private")).as_(bot)
         return True
 n = [0]
@@ -79,14 +83,14 @@ async def body(s, db):
     ai = Assistant(s, db); fake = FakeMessages(); ai.client = NS(messages=fake)
     bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s)
     acc = Access(db, s); dp.message.outer_middleware(acc); dp.callback_query.outer_middleware(acc)
-    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(router)
+    dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(router)
     async def feed(d):
         calls.clear(); await dp.feed_update(bot, Update.model_validate(d, context={"bot": bot})); return list(calls)
     texts = lambda r: [c[1].get("text", "") for c in r if c[0] == "sendMessage"]
     U = 100
     r = await feed(msg(U, "/start")); assert "inline_keyboard" in r[0][1]["reply_markup"] and len(r[0][1]["reply_markup"]["inline_keyboard"]) == 3
     print("start asks language:", texts(r)[0][:40])
-    r = await feed(cb(U, "lang:ru")); welcome = [x for x in texts(r) if "OmniStudent" in x]; assert welcome and len(r[-1][1]["reply_markup"]["keyboard"]) == 4
+    r = await feed(cb(U, "lang:ru")); welcome = [x for x in texts(r) if "OmniStudent" in x]; assert welcome and len(r[-1][1]["reply_markup"]["keyboard"]) == 6
     print("language ru + welcome ok, menu rows:", len(r[-1][1]["reply_markup"]["keyboard"]))
     r = await feed(msg(U, "✍️ Писать работу")); print("mode intro:", texts(r)[0][:40])
     r = await feed(msg(U, "Курсовая по маркетингу, 30 страниц")); out = texts(r)
@@ -157,6 +161,28 @@ async def body(s, db):
     for i in range(4):
         await feed(msg(W, "/support")); r = await feed(msg(W, f"again {i}"))
     assert await db.open_tickets_of(W) == 3 and "several requests" in texts(r)[-1]; print("open-ticket limit ok")
+
+    # ---------- free tools ----------
+    T = 400
+    await feed(msg(T, "/start")); await feed(cb(T, "lang:en"))
+    r = await feed(msg(T, "📊 Slides")); assert "Free slides" in texts(r)[0]
+    r = await feed(msg(T, "Digital marketing, 8 slides")); docs_out = [c for c in r if c[0] == "sendDocument"]
+    assert docs_out and docs_out[0][1]["caption"].startswith("✅ Done: 2 slides"), r; print("slides ok:", docs_out[0][1]["caption"])
+    assert "exactly 8 content slides" in fake.calls[-1]["system"] and "English" in fake.calls[-1]["system"]
+    r = await feed(msg(T, "🕵️ AI check")); assert "AI check" in texts(r)[0]
+    r = await feed(msg(T, "short text")); assert "at least" in texts(r)[0]
+    r = await feed(msg(T, "Таким образом, это очень длинный текст. " * 20)); rep = texts(r)[-1]
+    assert "74%" in rep and "Одинаковый ритм" in rep and "Таким образом" in rep and "approximate" in rep; print("ai check ok:", rep.replace("\n", " | ")[:110])
+    r = await feed(msg(T, "🔁 Converter")); assert "File converter" in texts(r)[0]
+    r = await feed(msg(T, document={"file_id": "f", "file_unique_id": "u", "file_name": "notes.txt", "file_size": 100}))
+    kbd = r[-1][1]["reply_markup"]["inline_keyboard"]; print("convert targets:", [b["text"] for row in kbd for b in row]); assert any(b["callback_data"] == "cv:pdf" for row in kbd for b in row)
+    r = await feed(cb(T, "cv:pdf")); d = [c for c in r if c[0] == "sendDocument"]; assert d and d[0][1]["caption"] == "✅ Done: notes.pdf"; print("convert ok:", d[0][1]["caption"])
+    r = await feed(msg(T, document={"file_id": "f", "file_unique_id": "u", "file_name": "a.zip", "file_size": 100})); assert "not supported" in texts(r)[0]
+    r = await feed(msg(T, "/cancel")); assert await db.tool_used_today(T, "slides") == 1
+    r = await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("menu button leaves a tool ok")
+    for i in range(3):
+        await feed(msg(T, "📊 Slides")); r = await feed(msg(T, f"Topic number {i} here"))
+    assert "limit is used up" in texts(r)[0], texts(r); print("tool limit ok:", texts(r)[0][:50])
 
     # ---------- admin tools ----------
     r = await feed(msg(900, "/stats")); print("admin stats:", texts(r)[0].replace("\n", " | "))

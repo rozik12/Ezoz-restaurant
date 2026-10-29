@@ -12,6 +12,7 @@ from aiogram.types import BotCommand
 
 import admin
 import support
+import tools
 from access import Access
 from config import Settings
 from db import Database
@@ -31,6 +32,9 @@ async def setup_profile(bot: Bot) -> None:
         await bot.set_my_commands([BotCommand(command="start", description="Главное меню"),
                                    BotCommand(command="new", description="Новый диалог"),
                                    BotCommand(command="subscribe", description="Подписка за Stars"),
+                                   BotCommand(command="slides", description="Слайды / Slaydlar / Slides"),
+                                   BotCommand(command="convert", description="Конвертер / Konvertor / Converter"),
+                                   BotCommand(command="detect", description="Проверка на ИИ / AI check"),
                                    BotCommand(command="support", description="Поддержка / Yordam / Support"),
                                    BotCommand(command="lang", description="Язык / Til / Language"),
                                    BotCommand(command="help", description="Помощь"),
@@ -55,6 +59,7 @@ async def main() -> None:
     dp.callback_query.outer_middleware(access)
     dp.include_router(support.router)          # order matters: support dialog and admin tools come before the catch-all handlers
     dp.include_router(admin.router)
+    dp.include_router(tools.router)
     dp.include_router(router)
     try:
         await bot.delete_webhook(drop_pending_updates=False)

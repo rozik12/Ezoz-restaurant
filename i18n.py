@@ -230,6 +230,10 @@ S: dict[str, tuple[str, str, str]] = {
     "cancel_btn": ("✖️ Отмена", "✖️ Bekor qilish", "✖️ Cancel"),
 }
 
+from i18n_tools import TOOLS  # noqa: E402
+
+S.update(TOOLS)
+
 
 def t(lang: str | None, key: str, **kw) -> str:
     row = S[key]

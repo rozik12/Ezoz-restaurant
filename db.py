@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS usage (
     n       INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, day)
 );
+CREATE TABLE IF NOT EXISTS tool_usage (
+    user_id INTEGER NOT NULL,
+    tool    TEXT NOT NULL,
+    day     TEXT NOT NULL,
+    n       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, tool, day)
+);
 CREATE TABLE IF NOT EXISTS admins (
     user_id  INTEGER PRIMARY KEY,
     username TEXT,
@@ -163,6 +170,19 @@ class Database:
             (user_id, today()))
         await self.db.commit()
 
+    async def tool_used_today(self, user_id: int, tool: str) -> int:
+        return await self._scalar("SELECT n FROM tool_usage WHERE user_id=? AND tool=? AND day=?", (user_id, tool, today()))
+
+    async def count_tool(self, user_id: int, tool: str) -> None:
+        await self.db.execute(
+            "INSERT INTO tool_usage(user_id, tool, day, n) VALUES(?,?,?,1) ON CONFLICT(user_id, tool, day) DO UPDATE SET n=n+1",
+            (user_id, tool, today()))
+        await self.db.commit()
+
+    async def tool_totals_today(self) -> dict[str, int]:
+        async with self.db.execute("SELECT tool, SUM(n) AS n FROM tool_usage WHERE day=? GROUP BY tool", (today(),)) as cur:
+            return {r["tool"]: r["n"] for r in await cur.fetchall()}
+
     # ---------- payments ----------
     async def add_payment(self, user_id: int, charge_id: str, stars: int, days: int) -> None:
         await self.db.execute("INSERT INTO payments(user_id, charge_id, stars, days, ts) VALUES(?,?,?,?,?)",
@@ -279,6 +299,7 @@ class Database:
             "tickets_open": await self._scalar("SELECT COUNT(*) FROM tickets WHERE status='open'"),
             "tickets_total": await self._scalar("SELECT COUNT(*) FROM tickets"),
         }
+        d["tools_today"] = await self.tool_totals_today()
         async with self.db.execute("SELECT COALESCE(lang,'-') AS l, COUNT(*) AS n FROM users GROUP BY l") as cur:
             d["langs"] = {r["l"]: r["n"] for r in await cur.fetchall()}
         return d

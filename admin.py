@@ -84,6 +84,8 @@ async def stats_text(db: Database) -> str:
             f"🔥 Писали боту сегодня: {s['active_today']} · были за 7 дней: {s['active_7d']}\n"
             f"💬 Запросов сегодня: {s['requests_today']} · всего: {s['requests_total']}\n"
             f"💎 Подписчиков сейчас: {s['paid']} · оплат: {s['payments']} на {s['stars']} ⭐\n"
+            f"🧰 Сегодня: слайдов {s['tools_today'].get('slides', 0)} · проверок на ИИ {s['tools_today'].get('detect', 0)} · "
+            f"конвертаций {s['tools_today'].get('convert', 0)}\n"
             f"🆘 Обращения: открытых {s['tickets_open']} из {s['tickets_total']}\n"
             f"🚫 Заблокировано: {s['banned']}\n"
             f"🌐 Языки: {langs}")

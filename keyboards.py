@@ -14,6 +14,12 @@ BTN_SUB = labels("btn_sub")
 BTN_NEW = labels("btn_new")
 BTN_SUPPORT = labels("btn_support")
 BTN_LANG = labels("btn_lang")
+BTN_SLIDES = labels("btn_slides")
+BTN_DETECT = labels("btn_detect")
+BTN_CONVERT = labels("btn_convert")
+MENU_LABELS = set().union(*(labels(k) for k in (
+    "btn_write", "btn_tech", "btn_edit", "btn_cheat", "btn_sub", "btn_new", "btn_support", "btn_lang",
+    "btn_slides", "btn_detect", "btn_convert")))
 
 MODE_TITLES = {
     "general": "Свободный режим", "writer": "Академический писатель", "tech": "Технический эксперт",
@@ -26,6 +32,8 @@ def main_menu(lang: str) -> ReplyKeyboardMarkup:
         keyboard=[[KeyboardButton(text=t(lang, "btn_write")), KeyboardButton(text=t(lang, "btn_tech"))],
                   [KeyboardButton(text=t(lang, "btn_edit")), KeyboardButton(text=t(lang, "btn_cheat"))],
                   [KeyboardButton(text=t(lang, "btn_sub")), KeyboardButton(text=t(lang, "btn_new"))],
+                  [KeyboardButton(text=t(lang, "btn_slides")), KeyboardButton(text=t(lang, "btn_convert"))],
+                  [KeyboardButton(text=t(lang, "btn_detect"))],
                   [KeyboardButton(text=t(lang, "btn_support")), KeyboardButton(text=t(lang, "btn_lang"))]],
         resize_keyboard=True, input_field_placeholder=t(lang, "placeholder"))
 
@@ -43,6 +51,11 @@ def cheat_choice(lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(lang, "cheat_btn"), callback_data="mode:cheat")],
         [InlineKeyboardButton(text=t(lang, "exam_btn"), callback_data="mode:exam")]])
+
+
+def convert_targets(targets: tuple[str, ...]) -> InlineKeyboardMarkup:
+    row = [InlineKeyboardButton(text=f"→ {x.upper()}", callback_data=f"cv:{x}") for x in targets]
+    return InlineKeyboardMarkup(inline_keyboard=[row[i:i + 3] for i in range(0, len(row), 3)])
 
 
 def subscribe_button(label: str) -> InlineKeyboardMarkup:

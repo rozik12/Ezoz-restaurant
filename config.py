@@ -33,6 +33,9 @@ class Settings:
     paid_daily: int
     free_max_tokens: int
     paid_max_tokens: int
+    slides_daily: int
+    detect_daily: int
+    convert_daily: int
     price_stars: int
     sub_days: int
     db_path: str
@@ -57,6 +60,9 @@ class Settings:
             paid_daily=_int("PAID_DAILY", 100),
             free_max_tokens=_int("FREE_MAX_TOKENS", 1800),
             paid_max_tokens=min(_int("PAID_MAX_TOKENS", 8000), 8192),          # DeepSeek allows up to 8192 output tokens
+            slides_daily=_int("SLIDES_DAILY", 3),
+            detect_daily=_int("DETECT_DAILY", 5),
+            convert_daily=_int("CONVERT_DAILY", 30),
             price_stars=_int("PRICE_STARS", 300),
             sub_days=_int("SUB_DAYS", 30),
             db_path=os.getenv("DB_PATH", "omnistudent.db").strip(),

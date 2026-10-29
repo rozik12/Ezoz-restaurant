@@ -28,3 +28,13 @@ python tests/smoke.py    # end-to-end check on fake Telegram and fake Claude
 * **Admins:** ids in `ADMIN_IDS` are owners; usernames in `ADMIN_USERNAMES` become admins on their first message.
   `/admin` opens the panel: statistics (users, new, active, subscribers, requests, languages, tickets), user list and cards,
   subscription grant/revoke, ban/unban, refunds, tickets, broadcast, admin list. Only owners use `/addadmin` and `/rmadmin`.
+
+## Free tools
+
+* **📊 Slides** (`/slides`): a topic (optionally "12 slides") or a file becomes a ready `.pptx` with speaker notes. No invented sources.
+* **🔁 Converter** (`/convert`): .docx, .pdf, .txt, .md, .pptx convert to each other; photos (.jpg, .png) become PDF.
+  Headings, paragraphs and lists are kept; complex layout is simplified; scanned PDFs without a text layer are not supported.
+* **🕵️ AI check** (`/detect`): an estimate of how machine-like a text reads, with the most generic passages and advice.
+  It is an orientation, not proof; real detectors differ.
+
+Daily limits are separate from chat requests (`SLIDES_DAILY`, `DETECT_DAILY`, `CONVERT_DAILY`; subscribers get triple).
