@@ -95,7 +95,7 @@ class Assistant:
         return text
 
     # ---------- providers ----------
-    async def _once(self, system: str, messages: list[dict], max_tokens: int) -> tuple[str, bool]:
+    async def _once(self, system: str, messages: list[dict], max_tokens: int, model: str | None = None) -> tuple[str, bool]:
         """One request. Raises Retry for temporary problems and AssistantError for fatal ones."""
         if self.provider in ("deepseek", "gemini"):
             import openai
@@ -103,7 +103,7 @@ class Assistant:
             extra = {"reasoning_effort": "none"} if gemini else {}      # thinking tokens would eat the answer's token budget
             try:
                 resp = await self.client.chat.completions.create(
-                    model=self.s.gemini_model if gemini else self.s.deepseek_model,
+                    model=(model or self.s.gemini_model) if gemini else self.s.deepseek_model,
                     max_tokens=max_tokens if gemini else min(max_tokens, 8192), temperature=0.7, timeout=240,
                     messages=[{"role": "system", "content": system}, *messages], **extra)
             except openai.RateLimitError as e:
@@ -142,18 +142,21 @@ class Assistant:
             raise AssistantError("bad_request") from err
 
     async def _call(self, system: str, messages: list[dict], max_tokens: int) -> tuple[str, bool]:
-        delay = 2.0
-        for attempt in range(3):
-            try:
-                text, truncated = await self._once(system, messages, max_tokens)
-            except Retry as e:
-                log.warning("LLM call failed (attempt %d): %s", attempt + 1, e)
-                if attempt == 2:
-                    raise AssistantError(str(e)) from e
-                await asyncio.sleep(delay)
-                delay *= 2
-                continue
-            if not text:
-                raise AssistantError("empty")
-            return text, truncated
-        raise AssistantError("overloaded")
+        """Up to three attempts on the main model; Gemini then gets three more on a lighter model, because 'high demand' errors come in waves."""
+        models = [None] + ([self.s.gemini_fallback_model] if self.provider == "gemini" and self.s.gemini_fallback_model else [])
+        last = "overloaded"
+        for model in models:
+            delay = 2.0
+            for attempt in range(3):
+                try:
+                    text, truncated = await self._once(system, messages, max_tokens, model) if model else await self._once(system, messages, max_tokens)
+                except Retry as e:
+                    last = str(e)
+                    log.warning("LLM call failed (%s, attempt %d): %s", model or "main", attempt + 1, e)
+                    await asyncio.sleep(delay)
+                    delay *= 2
+                    continue
+                if not text:
+                    raise AssistantError("empty")
+                return text, truncated
+        raise AssistantError(last)

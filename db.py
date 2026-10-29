@@ -61,6 +61,16 @@ CREATE TABLE IF NOT EXISTS kv (
     k TEXT PRIMARY KEY,
     v TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS works (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    kind    TEXT NOT NULL,
+    title   TEXT NOT NULL,
+    file_id TEXT NOT NULL,
+    size    INTEGER NOT NULL DEFAULT 0,
+    created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_works_user ON works(user_id, id);
 CREATE TABLE IF NOT EXISTS admins (
     user_id  INTEGER PRIMARY KEY,
     username TEXT,
@@ -247,6 +257,21 @@ class Database:
 
     async def payment_exists(self, charge_id: str) -> bool:
         return bool(await self._scalar("SELECT 1 FROM payments WHERE charge_id=?", (charge_id,)))
+
+    # ---------- finished works (so the user can download them again) ----------
+    async def add_work(self, user_id: int, kind: str, title: str, file_id: str, size: int) -> int:
+        cur = await self.db.execute("INSERT INTO works(user_id, kind, title, file_id, size, created) VALUES(?,?,?,?,?,?)",
+                                    (user_id, kind, title[:200], file_id, size, time.time()))
+        await self.db.commit()
+        return cur.lastrowid
+
+    async def recent_works(self, user_id: int, limit: int = 10) -> list[dict]:
+        rows = await self._rows("SELECT * FROM works WHERE user_id=? ORDER BY id DESC LIMIT ?", (user_id, limit))
+        return [dict(r) for r in rows]
+
+    async def get_work(self, work_id: int, user_id: int) -> dict | None:
+        rows = await self._rows("SELECT * FROM works WHERE id=? AND user_id=?", (work_id, user_id))
+        return dict(rows[0]) if rows else None
 
     # ---------- language, bans ----------
     async def get_lang(self, user_id: int) -> str | None:

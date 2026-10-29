@@ -81,7 +81,7 @@ async def wallet(message: Message, state: FSMContext, db: Database, settings: Se
     left = max(0, settings.free_actions - await db.free_used(message.from_user.id))
     free_line = t(lang, "wallet_free_line", free=left) if settings.free_actions > 0 else ""
     await message.answer(t(lang, "wallet_text", balance=bal, n=bal // p["chat"] if p["chat"] else bal, free_line=free_line,
-                           chat=p["chat"], slides=p["slides"], detect=p["detect"], convert=p["convert"]),
+                           chat=p["chat"], paper=p["paper"], slides=p["slides"], detect=p["detect"], convert=p["convert"]),
                          reply_markup=kb.topup_markup(lang, settings))
 
 

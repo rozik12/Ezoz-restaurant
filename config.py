@@ -23,6 +23,7 @@ class Settings:                                  # mutable: administrators chang
     bot_token: str
     gemini_key: str
     gemini_model: str
+    gemini_fallback_model: str
     deepseek_key: str
     deepseek_model: str
     anthropic_key: str
@@ -60,6 +61,7 @@ class Settings:                                  # mutable: administrators chang
             bot_token=token,
             gemini_key=os.getenv("GEMINI_API_KEY", "").strip(),
             gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip(),
+            gemini_fallback_model=os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.1-flash-lite").strip(),
             deepseek_key=os.getenv("DEEPSEEK_API_KEY", "").strip(),
             deepseek_model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat").strip(),
             anthropic_key=os.getenv("ANTHROPIC_API_KEY", "").strip(),
@@ -67,7 +69,7 @@ class Settings:                                  # mutable: administrators chang
             admin_ids=_ids("ADMIN_IDS"),
             admin_usernames=tuple(x.lstrip("@").lower() for x in os.getenv("ADMIN_USERNAMES", "").replace(" ", "").split(",") if x),
             paid_max_tokens=min(_int("MAX_TOKENS", 8000), 8192),               # DeepSeek allows up to 8192 output tokens
-            prices={k: _int(f"PRICE_{k.upper()}", 50) for k in ("chat", "slides", "detect", "convert")},     # Stars per action
+            prices={k: _int(f"PRICE_{k.upper()}", 50) for k in ("chat", "slides", "detect", "convert", "paper")},     # Stars per action
             topup_presets=tuple(int(x) for x in os.getenv("TOPUP_PRESETS", "50,100,250,500,1000").replace(" ", "").split(",") if x.isdigit()),
             topup_max=min(_int("TOPUP_MAX", 10000), 10000),                      # Telegram's ceiling for one Stars invoice
             welcome_bonus=_int("WELCOME_BONUS", 0),

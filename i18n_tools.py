@@ -4,13 +4,6 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "btn_detect": ("🕵️ Проверка на ИИ", "🕵️ AI tekshiruvi", "🕵️ AI check"),
     "btn_convert": ("🔁 Конвертер", "🔁 Konvertor", "🔁 Converter"),
     # ---- slides ----
-    "slides_intro": (
-        "📊 <b>Слайды бесплатно</b>\n\nНапишите тему презентации, можно с числом слайдов, например: <i>«Цифровой маркетинг, 12 слайдов»</i>. "
-        "Или пришлите файл (.txt, .pdf, .docx), и я сделаю презентацию по нему. Вы получите готовый .pptx для PowerPoint.\n\nОтмена: /cancel",
-        "📊 <b>Slaydlar bepul</b>\n\nTaqdimot mavzusini yozing, slaydlar sonini ham ko'rsatish mumkin, masalan: <i>«Raqamli marketing, 12 slayd»</i>. "
-        "Yoki fayl (.txt, .pdf, .docx) yuboring, men uning asosida taqdimot qilaman. PowerPoint uchun tayyor .pptx olasiz.\n\nBekor qilish: /cancel",
-        "📊 <b>Free slides</b>\n\nSend the presentation topic, optionally with a slide count, e.g. <i>\"Digital marketing, 12 slides\"</i>. "
-        "Or send a file (.txt, .pdf, .docx) and I'll build the deck from it. You get a ready .pptx for PowerPoint.\n\nCancel: /cancel"),
     "slides_working": ("⏳ Продумываю структуру, пишу слайды и проверяю качество. Это займёт около минуты…", "⏳ Tuzilmani o'ylab, slaydlarni yozib, sifatni tekshiryapman. Taxminan bir daqiqa…",
                        "⏳ Planning the story, writing the slides and polishing them. About a minute…"),
     "slides_done": (
@@ -52,62 +45,62 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "guide": (
         "📖 <b>Как пользоваться ботом</b>\n\n"
         "<b>1. Работы и тексты</b>\n"
-        "✍️ <b>Писать работу</b>: курсовая, реферат, эссе, план. Напишите тему, объём и требования вуза.\n"
+        "✍️ <b>Писать работу</b>: курсовая, реферат, эссе, доклад, отчёт по практике, глава диплома. Бот спросит тему, язык, объём (слова или страницы, например 7000-9000 слов), стандарт и ваши требования, и пришлёт готовый файл .docx в вузовском оформлении.\n"
         "🧮 <b>Задачи и код</b>: пришлите условие, получите решение по шагам.\n"
         "📝 <b>Редактор и перевод</b>: проверка текста, рерайт, перевод. Можно прислать файл .txt, .pdf или .docx.\n"
         "🎓 <b>Шпаргалки и экзамен</b>: из конспекта сделаю шпаргалку, а «Вредный преподаватель» зададёт каверзные вопросы, как на защите.\n\n"
         "<b>2. Инструменты</b>\n"
-        "📊 <b>Слайды</b>: тема (можно с числом слайдов) или файл, и вы получите готовую презентацию .pptx с заметками для выступления в трёх стилях.\n"
+        "📊 <b>Слайды</b>: тема или файл, потом выбираете число слайдов, цель (защита, доклад, бизнес, школа) и стиль, и получаете готовую презентацию .pptx с заметками для выступления.\n"
         "🔁 <b>Конвертер</b>: .docx, .pdf, .txt, .md, .pptx переводятся друг в друга, а фото в PDF.\n"
         "🕵️ <b>Проверка на ИИ</b>: оценка текста и советы, как сделать его по-настоящему своим.\n\n"
         "<b>3. Оплата</b>\n"
-        "{pay_intro} вопрос {chat} ⭐, слайды {slides} ⭐, "
+        "{pay_intro} вопрос {chat} ⭐, готовая работа {paper} ⭐, слайды {slides} ⭐, "
         "проверка на ИИ {detect} ⭐, конвертация {convert} ⭐. Если действие не удалось, звёзды возвращаются.\n"
         "💰 <b>Кошелёк</b> пополняется на любую сумму от 1 ⭐. Как купить Stars: /stars\n\n"
         "<b>4. Полезное</b>\n"
         "🧹 <b>Новый диалог</b> очищает память, когда меняете тему.\n"
         "🆘 <b>Поддержка</b>: напишите, если что-то не работает.\n"
-        "🌐 <b>Язык</b>: сменить язык бота.\n\n"
+        "📂 <b>Мои работы</b>: все готовые файлы, их можно скачать ещё раз.\n🌐 <b>Язык</b>: сменить язык бота.\n\n"
         "💡 Чем точнее задача (тема, объём, стандарт оформления, дедлайн), тем лучше результат. Факты и источники в ответах проверяйте сами. "
         "Эту инструкцию можно открыть снова командой /guide.",
         "📖 <b>Botdan qanday foydalaniladi</b>\n\n"
         "<b>1. Ishlar va matnlar</b>\n"
-        "✍️ <b>Ish yozish</b>: kurs ishi, referat, esse, reja. Mavzu, hajm va universitet talablarini yozing.\n"
+        "✍️ <b>Ish yozish</b>: kurs ishi, referat, esse, ma'ruza, amaliyot hisoboti, bitiruv ishi bobi. Bot mavzu, til, hajm (so'z yoki sahifa, masalan 7000-9000 so'z), standart va talablaringizni so'raydi va universitet andozasidagi tayyor .docx faylni yuboradi.\n"
         "🧮 <b>Masala va kod</b>: shartni yuboring, yechimni bosqichma-bosqich oling.\n"
         "📝 <b>Muharrir va tarjima</b>: matnni tekshirish, qayta yozish, tarjima. .txt, .pdf yoki .docx fayl yuborish mumkin.\n"
         "🎓 <b>Shpargalka va imtihon</b>: konspektdan shpargalka qilaman, «Qattiq o'qituvchi» esa himoyadagidek qiyin savollar beradi.\n\n"
         "<b>2. Vositalar</b>\n"
-        "📊 <b>Slaydlar</b>: mavzu (slaydlar sonini ham yozish mumkin) yoki fayl, natijada nutq uchun izohli, uch xil uslubdagi tayyor .pptx taqdimot olasiz.\n"
+        "📊 <b>Slaydlar</b>: mavzu yoki fayl, keyin slaydlar soni, maqsad (himoya, ma'ruza, biznes, maktab) va uslubni tanlaysiz, natijada nutq uchun izohli tayyor .pptx taqdimot olasiz.\n"
         "🔁 <b>Konvertor</b>: .docx, .pdf, .txt, .md, .pptx bir-biriga, rasmlar esa PDF ga o'tkaziladi.\n"
         "🕵️ <b>AI tekshiruvi</b>: matnni baholash va uni haqiqatan o'zingiznikiga aylantirish bo'yicha maslahatlar.\n\n"
         "<b>3. To'lov</b>\n"
-        "{pay_intro} savol {chat} ⭐, slaydlar {slides} ⭐, "
+        "{pay_intro} savol {chat} ⭐, tayyor ish {paper} ⭐, slaydlar {slides} ⭐, "
         "AI tekshiruvi {detect} ⭐, konvertatsiya {convert} ⭐. Harakat bajarilmasa, yulduzlar qaytariladi.\n"
         "💰 <b>Hamyon</b> istalgan summaga, 1 ⭐ dan to'ldiriladi. Stars qanday sotib olinadi: /stars\n\n"
         "<b>4. Foydali</b>\n"
         "🧹 <b>Yangi suhbat</b> mavzu o'zgarganda xotirani tozalaydi.\n"
         "🆘 <b>Yordam xizmati</b>: biror narsa ishlamasa yozing.\n"
-        "🌐 <b>Til</b>: bot tilini almashtirish.\n\n"
+        "📂 <b>Mening ishlarim</b>: barcha tayyor fayllar, ularni qayta yuklab olish mumkin.\n🌐 <b>Til</b>: bot tilini almashtirish.\n\n"
         "💡 Topshiriq qanchalik aniq bo'lsa (mavzu, hajm, rasmiylashtirish standarti, muddat), natija shunchalik yaxshi. Javobdagi fakt va manbalarni o'zingiz tekshiring. "
         "Bu yo'riqnomani /guide buyrug'i bilan qayta ochish mumkin.",
         "📖 <b>How to use the bot</b>\n\n"
         "<b>1. Papers and texts</b>\n"
-        "✍️ <b>Write a paper</b>: term paper, report, essay, outline. Send the topic, length and your university's requirements.\n"
+        "✍️ <b>Write a paper</b>: term paper, report, essay, speech, internship report, thesis chapter. The bot asks for the topic, language, length (words or pages, e.g. 7000-9000 words), standard and your requirements, and sends a ready .docx in university layout.\n"
         "🧮 <b>Problems & code</b>: send the task and get a step-by-step solution.\n"
         "📝 <b>Editor & translation</b>: proofreading, rewriting, translation. You can send a .txt, .pdf or .docx file.\n"
         "🎓 <b>Cheat sheets & exam</b>: I turn notes into a cheat sheet, and the «Tough Professor» asks tricky questions like at a defense.\n\n"
         "<b>2. Tools</b>\n"
-        "📊 <b>Slides</b>: a topic (optionally with a slide count) or a file, and you get a ready .pptx deck with speaker notes in three styles.\n"
+        "📊 <b>Slides</b>: a topic or a file, then you choose the slide count, the purpose (defense, talk, business, school) and a style, and get a ready .pptx deck with speaker notes.\n"
         "🔁 <b>Converter</b>: .docx, .pdf, .txt, .md, .pptx convert to each other, and photos to PDF.\n"
         "🕵️ <b>AI check</b>: an estimate of a text plus tips to make it genuinely yours.\n\n"
         "<b>3. Payment</b>\n"
-        "{pay_intro} a question {chat} ⭐, slides {slides} ⭐, "
+        "{pay_intro} a question {chat} ⭐, a finished work {paper} ⭐, slides {slides} ⭐, "
         "AI check {detect} ⭐, conversion {convert} ⭐. If an action fails, the Stars are returned.\n"
         "💰 The <b>Wallet</b> tops up any amount from 1 ⭐. How to buy Stars: /stars\n\n"
         "<b>4. Handy</b>\n"
         "🧹 <b>New chat</b> clears the memory when you change the topic.\n"
         "🆘 <b>Support</b>: write to us if something does not work.\n"
-        "🌐 <b>Language</b>: change the bot's language.\n\n"
+        "📂 <b>My works</b>: all your finished files, ready to download again.\n🌐 <b>Language</b>: change the bot's language.\n\n"
         "💡 The more precise the task (topic, length, formatting standard, deadline), the better the result. Check the facts and sources in answers yourself. "
         "You can open this guide again with /guide."),
     # ---- the free-action lines, shown only when FREE_ACTIONS > 0 ----
@@ -131,13 +124,13 @@ TOOLS: dict[str, tuple[str, str, str]] = {
     "btn_sub": ("💰 Кошелёк", "💰 Hamyon", "💰 Wallet"),
     "wallet_text": (
         "💰 <b>Ваш кошелёк</b>\n\nБаланс: <b>{balance} ⭐</b> (хватит примерно на {n} вопросов)\n{free_line}\n"
-        "<b>Стоимость действий</b>\n• вопрос ассистенту: {chat} ⭐\n• презентация: {slides} ⭐\n• проверка на ИИ: {detect} ⭐\n• конвертация файла: {convert} ⭐\n\n"
+        "<b>Стоимость действий</b>\n• вопрос ассистенту: {chat} ⭐\n• готовая работа (курсовая, реферат, эссе...): {paper} ⭐\n• презентация: {slides} ⭐\n• проверка на ИИ: {detect} ⭐\n• конвертация файла: {convert} ⭐\n\n"
         "Пополнить можно на любую сумму, начиная с 1 ⭐: выберите вариант или нажмите «Другая сумма».",
         "💰 <b>Sizning hamyoningiz</b>\n\nBalans: <b>{balance} ⭐</b> (taxminan {n} ta savolga yetadi)\n{free_line}\n"
-        "<b>Harakatlar narxi</b>\n• yordamchiga savol: {chat} ⭐\n• taqdimot: {slides} ⭐\n• AI tekshiruvi: {detect} ⭐\n• faylni konvertatsiya qilish: {convert} ⭐\n\n"
+        "<b>Harakatlar narxi</b>\n• yordamchiga savol: {chat} ⭐\n• tayyor ish (kurs ishi, referat, esse...): {paper} ⭐\n• taqdimot: {slides} ⭐\n• AI tekshiruvi: {detect} ⭐\n• faylni konvertatsiya qilish: {convert} ⭐\n\n"
         "Hamyonni istalgan summaga to'ldirish mumkin, 1 ⭐ dan boshlab: variantni tanlang yoki «Boshqa summa» ni bosing.",
         "💰 <b>Your wallet</b>\n\nBalance: <b>{balance} ⭐</b> (enough for about {n} questions)\n{free_line}\n"
-        "<b>Cost of actions</b>\n• a question to the assistant: {chat} ⭐\n• a presentation: {slides} ⭐\n• an AI check: {detect} ⭐\n• a file conversion: {convert} ⭐\n\n"
+        "<b>Cost of actions</b>\n• a question to the assistant: {chat} ⭐\n• a finished work (term paper, report, essay...): {paper} ⭐\n• a presentation: {slides} ⭐\n• an AI check: {detect} ⭐\n• a file conversion: {convert} ⭐\n\n"
         "You can top up any amount, starting from 1 ⭐: pick an option or tap «Other amount»."),
     "free_line": ("🎁 бесплатное действие, осталось: {left}", "🎁 bepul harakat, qoldi: {left}", "🎁 free action, left: {left}"),
     "top_other": ("✏️ Другая сумма", "✏️ Boshqa summa", "✏️ Other amount"),

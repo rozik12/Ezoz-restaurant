@@ -43,12 +43,11 @@ MAX_DECKS = 500
 
 
 class Tool(StatesGroup):
-    slides = State()
     detect = State()
     convert = State()
 
 
-ANY_TOOL = StateFilter(Tool.slides, Tool.detect, Tool.convert)
+ANY_TOOL = StateFilter(Tool.detect, Tool.convert)
 NOT_MENU = ~(F.text.startswith("/") | F.text.in_(kb.MENU_LABELS))     # the stored FSM state is stale after clear(), so exclude explicitly
 
 
@@ -69,13 +68,6 @@ async def input_text(message: Message, bot: Bot, lang: str) -> str | None:
 
 
 # ---------------- entering and leaving ----------------
-@router.message(Command("slides"))
-@router.message(F.text.in_(kb.BTN_SLIDES))
-async def open_slides(message: Message, state: FSMContext, lang: str) -> None:
-    await state.set_state(Tool.slides)
-    await message.answer(t(lang, "slides_intro"), reply_markup=kb.cancel_menu(lang))
-
-
 @router.message(Command("detect"))
 @router.message(F.text.in_(kb.BTN_DETECT))
 async def open_detect(message: Message, state: FSMContext, lang: str) -> None:
@@ -103,68 +95,7 @@ async def leave(message: Message, state: FSMContext) -> None:
     raise SkipHandler
 
 
-# ---------------- slides ----------------
-@router.message(StateFilter(Tool.slides), NOT_MENU)
-async def make_slides(message: Message, state: FSMContext, bot: Bot, db: Database, ai: Assistant, settings: Settings, lang: str) -> None:
-    topic = await input_text(message, bot, lang)
-    if topic is None:
-        return
-    if len(topic) < 4:
-        await message.answer(t(lang, "slides_short"))
-        return
-    uid = message.from_user.id
-    kind = await spend(message, db, settings, uid, "slides", lang)
-    if not kind:
-        await state.clear()
-        return
-    m = re.search(r"(\d{1,2})\s*(?:слайд|slayd|slide|sl\b)", topic.lower())
-    count = max(5, min(20, int(m.group(1)))) if m else 10
-    wait = await message.answer(t(lang, "slides_working"))
-    deck = None
-    try:
-        async with ChatActionSender.upload_document(bot=bot, chat_id=message.chat.id):
-            for _ in range(2):                                    # one retry when the model's JSON is malformed
-                raw = await ai.complete(sl.outline_prompt(lang, count), f"Topic or source material:\n{topic[:12000]}", 6000)
-                try:
-                    deck = sl.parse_deck(raw)
-                    break
-                except (ValueError, TypeError):
-                    log.warning("Slides: unparsable model output")
-            if deck is None:
-                raise ValueError("no deck")
-            try:                                                  # second pass: an editor sharpens titles, bullets and notes
-                better = sl.parse_deck(await ai.complete(sl.refine_prompt(lang), sl.deck_to_json(deck), 6000))
-                if len(better.slides) >= len(deck.slides) - 1:
-                    deck = better
-            except (AssistantError, ValueError, TypeError):
-                log.warning("Slides: refinement skipped")
-            data = await asyncio.to_thread(sl.build_pptx, deck, "modern", lang)
-    except AssistantError as e:
-        await give_back(db, settings, uid, "slides", kind)
-        await message.answer(f"⚠️ {t(lang, 'err_' + e.key)}\n{t(lang, 'refunded')}")
-        return
-    except Exception:
-        log.exception("Slides failed")
-        await give_back(db, settings, uid, "slides", kind)
-        await message.answer(f"{t(lang, 'slides_fail')}\n{t(lang, 'refunded')}")
-        return
-    finally:
-        try:
-            await wait.delete()
-        except TelegramBadRequest:
-            pass
-    await db.count_tool(uid, "slides")
-    cost = await spent_line(db, settings, uid, "slides", lang, kind)
-    name = re.sub(r"[^\w\- ]+", "", deck.title).strip()[:40].replace(" ", "_") or "presentation"
-    if len(_decks) >= MAX_DECKS:
-        _decks.pop(next(iter(_decks)))
-    _decks[uid] = (sl.deck_to_json(deck), name)
-    await message.answer_document(BufferedInputFile(data, filename=f"{name}.pptx"), caption=t(lang, "slides_done", n=len(deck.slides)) + (f"\n{cost}" if cost else ""),
-                                  reply_markup=kb.theme_buttons(lang, "modern"))
-    await message.answer(t(lang, "slides_restyle"), reply_markup=kb.main_menu(lang))
-    await state.clear()
-
-
+# ---------------- restyling the last presentation ----------------
 @router.callback_query(F.data.startswith("th:"))
 async def restyle(call: CallbackQuery, lang: str) -> None:
     theme = call.data.split(":")[1]

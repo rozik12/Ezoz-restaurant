@@ -49,7 +49,15 @@ class Deck:
 
 
 # ---------------------------------------------------------------- planning
-def outline_prompt(lang: str, count: int) -> str:
+PURPOSE = {
+    "defense": "The deck supports a student's defense of a written work (coursework or thesis): relevance, aim and tasks, methods, key results, conclusions, practical value, and a final slide for questions.",
+    "talk": "The deck supports a short talk in class: a clear question or problem, the main ideas explained simply with examples, takeaways.",
+    "business": "The deck is a business or project presentation: problem, solution, how it works, benefits, plan or next steps; persuasive and concise.",
+    "school": "The deck is for a school lesson or school project: simple language, short sentences, memorable examples, a recap at the end.",
+}
+
+
+def outline_prompt(lang: str, count: int, purpose: str = "") -> str:
     return (
         "You are a presentation designer and speaking coach preparing a deck for a student who must present it live. "
         "Reply with ONE JSON object and nothing else (no code fences):\n"
@@ -71,7 +79,8 @@ def outline_prompt(lang: str, count: int) -> str:
         "NOTES: for every slide write 3-4 natural spoken sentences the student can say, adding explanation and an example beyond the slide text.\n"
         "ACCURACY: never invent statistics, studies, quotes or bibliographic sources. Use only well-established facts; when unsure, describe the idea without numbers. "
         "If the user supplied source material, stay faithful to it.\n"
-        f"Write everything in {LANG_NAME.get(lang, 'Russian')} unless the topic text is clearly in another language.")
+        + (f"PURPOSE: {PURPOSE[purpose]}\n" if purpose in PURPOSE else "")
+        + f"Write everything in {LANG_NAME.get(lang, 'Russian')} unless the topic text is clearly in another language.")
 
 
 def refine_prompt(lang: str) -> str:

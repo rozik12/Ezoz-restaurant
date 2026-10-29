@@ -91,7 +91,7 @@ def welcome_text(settings: Settings, lang: str) -> str:
 def guide_text(settings: Settings, lang: str) -> str:
     p, n = settings.prices, settings.free_actions
     return t(lang, "guide", pay_intro=t(lang, "intro_free_guide", free=n) if n > 0 else t(lang, "intro_guide"),
-             chat=p["chat"], slides=p["slides"], detect=p["detect"], convert=p["convert"])
+             chat=p["chat"], paper=p["paper"], slides=p["slides"], detect=p["detect"], convert=p["convert"])
 
 
 @router.message(Command("guide"))

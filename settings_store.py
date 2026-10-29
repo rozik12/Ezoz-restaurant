@@ -21,6 +21,7 @@ FIELDS = (
     Field("price_slides", "Цена презентации, ⭐", "int", 0, 100_000),
     Field("price_detect", "Цена проверки на ИИ, ⭐", "int", 0, 100_000),
     Field("price_convert", "Цена конвертации, ⭐", "int", 0, 100_000),
+    Field("price_paper", "Цена готовой работы (курсовая, реферат...), ⭐", "int", 0, 100_000),
     Field("free_actions", "Бесплатных действий новичку", "int", 0, 1000),
     Field("welcome_bonus", "Приветственный бонус, ⭐", "int", 0, 100_000),
     Field("uzs_per_star", "Цена 1 ⭐ в сумах (для карты и Click/Payme)", "int", 0, 10_000_000),

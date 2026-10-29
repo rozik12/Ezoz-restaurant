@@ -6,9 +6,10 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardBu
 from i18n import LANGS, labels, t
 
 # button label (any language) -> mode / action
-MODE_BUTTONS = {**{x: "writer" for x in labels("btn_write")},
-                **{x: "tech" for x in labels("btn_tech")},
+MODE_BUTTONS = {**{x: "tech" for x in labels("btn_tech")},
                 **{x: "editor" for x in labels("btn_edit")}}
+BTN_WRITE = labels("btn_write")
+BTN_WORKS = labels("btn_works")
 BTN_CHEAT = labels("btn_cheat")
 BTN_SUB = labels("btn_sub")
 BTN_NEW = labels("btn_new")
@@ -19,7 +20,7 @@ BTN_DETECT = labels("btn_detect")
 BTN_CONVERT = labels("btn_convert")
 MENU_LABELS = set().union(*(labels(k) for k in (
     "btn_write", "btn_tech", "btn_edit", "btn_cheat", "btn_sub", "btn_new", "btn_support", "btn_lang",
-    "btn_slides", "btn_detect", "btn_convert")))
+    "btn_slides", "btn_detect", "btn_convert", "btn_works")))
 
 MODE_TITLES = {
     "general": "Свободный режим", "writer": "Академический писатель", "tech": "Технический эксперт",
@@ -33,7 +34,7 @@ def main_menu(lang: str) -> ReplyKeyboardMarkup:
                   [KeyboardButton(text=t(lang, "btn_edit")), KeyboardButton(text=t(lang, "btn_cheat"))],
                   [KeyboardButton(text=t(lang, "btn_sub")), KeyboardButton(text=t(lang, "btn_new"))],
                   [KeyboardButton(text=t(lang, "btn_slides")), KeyboardButton(text=t(lang, "btn_convert"))],
-                  [KeyboardButton(text=t(lang, "btn_detect"))],
+                  [KeyboardButton(text=t(lang, "btn_detect")), KeyboardButton(text=t(lang, "btn_works"))],
                   [KeyboardButton(text=t(lang, "btn_support")), KeyboardButton(text=t(lang, "btn_lang"))]],
         resize_keyboard=True, input_field_placeholder=t(lang, "placeholder"))
 
@@ -79,6 +80,11 @@ def topup_markup(lang: str, settings, missing: int | None = None) -> InlineKeybo
         rows.append([btn(text=t(lang, "btn_card_pay"), callback_data="topm:card")])
     rows.append([btn(text=t(lang, "stars_btn"), callback_data="stars:how")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def theme_choice(lang: str) -> InlineKeyboardMarkup:
+    from slides import THEME_ORDER
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t(lang, f"theme_{n}"), callback_data=f"st:{n}") for n in THEME_ORDER]])
 
 
 def card_paid_button(lang: str, stars: int) -> InlineKeyboardMarkup:

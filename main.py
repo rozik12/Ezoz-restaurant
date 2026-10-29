@@ -14,6 +14,7 @@ import admin
 import settings_store
 import wallet
 import support
+import orders
 import tools
 from access import Access
 from config import Settings
@@ -36,6 +37,8 @@ async def setup_profile(bot: Bot) -> None:
                                    BotCommand(command="new", description="Новый диалог"),
                                    BotCommand(command="wallet", description="Кошелёк / Hamyon / Wallet"),
                                    BotCommand(command="stars", description="Как купить Stars / Stars sotib olish / Buy Stars"),
+                                   BotCommand(command="write", description="Курсовая, реферат, эссе / Yozish / Write"),
+                                   BotCommand(command="works", description="Мои работы / Ishlarim / My works"),
                                    BotCommand(command="slides", description="Слайды / Slaydlar / Slides"),
                                    BotCommand(command="convert", description="Конвертер / Konvertor / Converter"),
                                    BotCommand(command="detect", description="Проверка на ИИ / AI check"),
@@ -67,6 +70,7 @@ async def main() -> None:
     dp.include_router(support.router)          # order matters: support dialog and admin tools come before the catch-all handlers
     dp.include_router(admin.router)
     dp.include_router(tools.router)
+    dp.include_router(orders.router)
     dp.include_router(wallet.router)
     dp.include_router(router)
     try:

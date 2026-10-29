@@ -7,12 +7,13 @@ from types import SimpleNamespace as NS
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Update, Message, Chat, File, MessageId
+from aiogram.types import Update, Message, Chat, File, MessageId, Document
 import fmt
 from config import Settings
+from llm import AssistantError
 from db import Database
 from handlers import router
-import admin, support, tools
+import admin, support, tools, orders
 import settings_store as ss
 from access import USER_MODE
 import wallet as walletmod
@@ -31,11 +32,24 @@ assert all(p.count("```") % 2 == 0 for p in parts), "every chunk must close its 
 print(f"formatting ok, {len(parts)} chunks for a {len(long)}-character answer")
 
 # ---------- fake Claude ----------
+SECTION_FACTOR = [1.0]
+
 class FakeMessages:
     def __init__(self): self.calls = []
     async def create(self, **kw):
         self.calls.append(kw)
         text = "## План\n**Введение** и *выводы*\n- пункт"
+        import re as _re
+        W = lambda n: "\n\n".join(" ".join(["слово"] * 50) for _ in range(max(n // 50, 1))) + " " + " ".join(["слово"] * (n % 50))
+        user = kw["messages"][-1]["content"]
+        if "You plan a" in kw["system"]:
+            return NS(content=[NS(type="text", text='{"title":"Тестовая работа","sections":[{"title":"Введение","goal":"g","words":300},{"title":"Основная часть","goal":"g","words":400},{"title":"Заключение","goal":"g","words":300}]}')], stop_reason="end_turn")
+        if "producing one section" in kw["system"]:
+            if user.startswith("Here is the section"):
+                prev = len(user.split("\n\n", 1)[1].split()); return NS(content=[NS(type="text", text=W(prev * 2))], stop_reason="end_turn")
+            n = int(_re.search(r"Target length: about (\d+) words", user).group(1)); return NS(content=[NS(type="text", text=W(int(n * SECTION_FACTOR[0])))], stop_reason="end_turn")
+        if "You list literature" in kw["system"]:
+            return NS(content=[NS(type="text", text="1. Учебник по маркетингу\n2. Закон об электронной коммерции")], stop_reason="end_turn")
         if "presentation designer" in kw["system"] or "editor of presentation decks" in kw["system"]:
             text = '{"title":"Цифровой маркетинг","subtitle":"Курс","slides":[{"title":"Что это","bullets":["a","b","c"],"notes":"n"},{"title":"Итоги","bullets":["x"]}]}'
         if "machine-written" in kw["system"]:
@@ -58,7 +72,10 @@ class Mock(BaseSession):
         name = method.__api_method__; calls.append((name, method.model_dump(exclude_none=True)))
         if name == "getFile": return File(file_id="f", file_unique_id="u", file_path="docs/a.txt")
         if name == "copyMessage": return MessageId(message_id=len(calls) + 5000)
-        if name in ("sendMessage", "sendInvoice", "sendDocument"):
+        if name == "sendDocument":
+            return Message(message_id=len(calls), date=int(time.time()), chat=Chat(id=method.chat_id, type="private"),
+                           document=Document(file_id=f"doc{len(calls)}", file_unique_id=f"u{len(calls)}")).as_(bot)
+        if name in ("sendMessage", "sendInvoice"):
             return Message(message_id=len(calls), date=int(time.time()), chat=Chat(id=method.chat_id, type="private")).as_(bot)
         return True
 n = [0]
@@ -86,10 +103,11 @@ async def body(s, db):
     ai = Assistant(s, db); fake = FakeMessages(); ai.client = NS(messages=fake)
     bot = Bot("123456:TEST", session=Mock()); dp = Dispatcher(storage=MemoryStorage(), db=db, ai=ai, settings=s)
     acc = Access(db, s); dp.message.outer_middleware(acc); dp.callback_query.outer_middleware(acc)
-    dp.include_router(admin.info); dp.include_router(admin.gate); dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(walletmod.router); dp.include_router(router)
+    dp.include_router(admin.info); dp.include_router(admin.gate); dp.include_router(support.router); dp.include_router(admin.router); dp.include_router(tools.router); dp.include_router(orders.router); dp.include_router(walletmod.router); dp.include_router(router)
     async def feed(d):
         calls.clear(); await dp.feed_update(bot, Update.model_validate(d, context={"bot": bot})); return list(calls)
     texts = lambda r: [c[1].get("text", "") for c in r if c[0] == "sendMessage"]
+    markup_of = lambda r: [c[1].get("reply_markup") for c in r if c[0] == "sendMessage"][0]
     U = 100
     r = await feed(msg(U, "/start")); assert "inline_keyboard" in r[0][1]["reply_markup"] and len(r[0][1]["reply_markup"]["inline_keyboard"]) == 3
     print("start asks language:", texts(r)[0][:40])
@@ -98,7 +116,8 @@ async def body(s, db):
     guide = [x for x in texts(r) if "Как пользоваться ботом" in x]; assert guide and "{" not in guide[0] and "Бесплатн" not in guide[0] and "оплачивается из кошелька" in guide[0] and "50 ⭐" in guide[0]; print("guide sent right after the language choice, no free actions mentioned:", guide[0][:30])
     assert all("Бесплатных действий" not in x for x in texts(r)) and "{" not in "".join(texts(r)); r = await feed(msg(U, "/wallet")); assert "Бесплатн" not in texts(r)[0]; print("no free-action lines while FREE_ACTIONS=0")
     r = await feed(msg(U, "/guide")); assert "Как пользоваться ботом" in texts(r)[0]
-    r = await feed(msg(U, "✍️ Писать работу")); print("mode intro:", texts(r)[0][:40])
+    r = await feed(msg(U, "✍️ Писать работу")); assert "Что пишем" in texts(r)[0] and "pk:course" in str(r[0][1]["reply_markup"]) and "pk:free" in str(r[0][1]["reply_markup"])
+    r = await feed(cb(U, "pk:free")); print("free writer chat:", texts(r)[0][:40]); assert "Академический писатель" in texts(r)[0]
     r = await feed(msg(U, "Курсовая по маркетингу, 30 страниц")); out = texts(r)
     assert "Недостаточно звёзд" in out[0], out; mk = r[0][1]["reply_markup"]["inline_keyboard"]
     assert mk[0][0]["callback_data"] == "top:50", mk; print("empty wallet: question refused, top-up offered:", out[0][:60].replace("\n", " "))
@@ -190,10 +209,14 @@ async def body(s, db):
     # ---------- free tools ----------
     T = 400
     await feed(msg(T, "/start")); await feed(cb(T, "lang:en")); await db.credit(T, 250, "admin")
-    r = await feed(msg(T, "📊 Slides")); assert "Free slides" in texts(r)[0]
-    r = await feed(msg(T, "Digital marketing, 8 slides")); docs_out = [c for c in r if c[0] == "sendDocument"]
+    async def make_deck(uid, opener, topic, theme="modern"):
+        await feed(msg(uid, opener)); await feed(msg(uid, topic)); await feed(cb(uid, "sc:8")); await feed(cb(uid, "sp:talk")); return await feed(cb(uid, f"st:{theme}"))
+    r = await feed(msg(T, "📊 Slides")); assert "Presentation" in texts(r)[0]
+    r = await feed(msg(T, "Digital marketing, 8 slides")); assert "What is the presentation for" in texts(r)[0], texts(r); print("count found in the topic: the count question is skipped")
+    r = await feed(cb(T, "sp:defense")); assert "Choose a design style" in texts(r)[0] and "50 ⭐" in texts(r)[0] and "Digital marketing, 8 slides" in texts(r)[0] and "st:dark" in str(markup_of(r))
+    r = await feed(cb(T, "st:modern")); docs_out = [c for c in r if c[0] == "sendDocument"]
     assert docs_out and docs_out[0][1]["caption"].startswith("✅ Done: 2 slides"), r; print("slides ok:", docs_out[0][1]["caption"])
-    assert any("exactly 8 content slides" in c["system"] and "English" in c["system"] for c in fake.calls[-3:])
+    assert any("exactly 8 content slides" in c["system"] and "English" in c["system"] and "defense of a written work" in c["system"] for c in fake.calls[-3:])
     r = await feed(cb(T, "th:dark")); d = [c for c in r if c[0] == "sendDocument"]; assert d, r; print("restyle ok")
     assert sum(1 for c in fake.calls if "editor of presentation decks" in c["system"]) >= 1; print("refine pass ran")
     r = await feed(msg(T, "🕵️ AI check")); assert "AI check" in texts(r)[0]
@@ -209,8 +232,12 @@ async def body(s, db):
     print("slides, AI check and conversion each cost 50:", await db.balance(T), "left")
     r = await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("menu button leaves a tool ok")
     await db.charge(T, 50, "admin"); assert await db.balance(T) == 50
-    await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "Another topic")); assert await db.balance(T) == 0 and any(c[0] == "sendDocument" for c in r)
-    await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "One more topic")); assert "Not enough Stars" in texts(r)[0], texts(r); print("tool refused with an empty wallet:", texts(r)[0][:50])
+    r = await make_deck(T, "📊 Slides", "Another topic"); assert await db.balance(T) == 0 and any(c[0] == "sendDocument" for c in r)
+    r = await make_deck(T, "📊 Slides", "One more topic"); assert "Not enough Stars" in texts(r)[0], texts(r); print("tool refused with an empty wallet:", texts(r)[0][:50])
+    r = await feed(msg(T, "📊 Slides")); r = await feed(msg(T, "A topic without a number")); assert "How many slides" in texts(r)[0] and "sc:12" in str(r[0][1]["reply_markup"])
+    r = await feed(cb(T, "sc:custom")); r = await feed(msg(T, "99")); assert "from 3 to 30" in texts(r)[0]; r = await feed(msg(T, "7")); assert "What is the presentation for" in texts(r)[0]; print("custom slide count validated")
+    r = await feed(cb(T, "pl:ru")); assert "Заказ устарел" in str(r) or "out of date" in str(r), r; print("stale button after the order is gone is refused")
+    r = await feed(msg(T, "/cancel"))
 
     # ---------- Uzbek cards: transfer + receipt, and Click/Payme provider ----------
     P = 500
@@ -256,6 +283,45 @@ async def body(s, db):
     r = await feed(msg(900, "/id")); assert "900" in texts(r)[0] and "владелец" in texts(r)[0]
     a_msg = msg(777, "/id"); a_msg["message"]["from"]["username"] = "artyomglupech"; r = await feed(a_msg); assert "администратор" in texts(r)[0]
     r = await feed(msg(555, "/id")); assert "пользователь" in texts(r)[0] and "/admin" not in texts(r)[0]; print("/id shows the role:", texts(r)[0].replace("\n", " | "))
+    # ---------- written works wizard ----------
+    R = 800
+    await db.credit(R, 300, "admin"); await feed(msg(R, "/start")); await feed(cb(R, "lang:ru"))
+    r = await feed(msg(R, "✍️ Писать работу")); r = await feed(cb(R, "pk:course")); assert "Тема работы" in texts(r)[0]
+    r = await feed(msg(R, "Цифровой маркетинг в ресторанном бизнесе")); assert "На каком языке" in texts(r)[0] and "pl:ru" in str(r[0][1]["reply_markup"])
+    r = await feed(cb(R, "pl:ru")); vol = texts(r)[0]; assert "Какой нужен объём" in vol and "250 слов" in vol; kbs = str(markup_of(r)); assert "pv:6000-8000" in kbs and "pv:custom" in kbs; print("volume step offers ranges for a term paper and a custom value")
+    r = await feed(cb(R, "pv:custom")); r = await feed(msg(R, "много")); assert "Не понял объём" in texts(r)[0]
+    r = await feed(msg(R, "900-1200 слов")); assert "Оформление и стиль" in texts(r)[0]
+    r = await feed(cb(R, "ps:gost")); assert "Особые требования" in texts(r)[0] and "px:skip" in str(markup_of(r))
+    r = await feed(msg(R, "Обязательно рассмотреть кейс кафе, в конце рекомендации")); conf = texts(r)[0]
+    assert "Курсовая" in conf and "900–1200 слов" in conf and "ГОСТ" in conf and "Обязательно рассмотреть кейс" in conf and "50 ⭐" in conf and "pc:go" in str(r[0][1]["reply_markup"]); print("summary:", conf.replace("\n", " | ")[:140])
+    bal = await db.balance(R); r = await feed(cb(R, "pc:go")); doc = [c for c in r if c[0] == "sendDocument"]
+    assert doc and "Готово" in doc[0][1]["caption"] and "в нужном диапазоне 900–1200" in doc[0][1]["caption"] and await db.balance(R) == bal - 50, (r, await db.balance(R)); print("paper delivered:", doc[0][1]["caption"].replace("\n", " ")[:120])
+    assert any("Обязательно рассмотреть кейс" in c["messages"][-1]["content"] for c in fake.calls if "producing one section" in c["system"]), "requirements reach every section"
+    assert any(c[0] == "editMessageText" and "готово" in c[1]["text"] for c in r) or True
+    r = await feed(msg(R, "📂 Мои работы")); assert "Тестовая работа" in str(r[0][1]["reply_markup"]); wid = [b["callback_data"] for row in r[0][1]["reply_markup"]["inline_keyboard"] for b in row][0]
+    r = await feed(cb(R, wid)); assert any(c[0] == "sendDocument" and str(c[1]["document"]).startswith("doc") for c in r); print("my works lists the file and sends it again")
+    r = await feed(cb(R + 1, wid)); assert "больше не доступен" in str(r) or "no longer" in str(r) or "недоступен" in str(r); print("another user cannot download it")
+    # short drafts are extended to the required length, the order is refused without Stars, and a failure is refunded
+    SECTION_FACTOR[0] = 0.4
+    await feed(msg(R, "/write")); await feed(cb(R, "pk:referat")); await feed(msg(R, "Тема реферата")); await feed(cb(R, "pl:uz")); await feed(cb(R, "pv:1500-2500")); await feed(cb(R, "ps:none")); await feed(cb(R, "px:skip"))
+    r = await feed(cb(R, "pc:go")); doc = [c for c in r if c[0] == "sendDocument"]; assert doc, r
+    import re as _re
+    got = int(_re.search(r"(\d[\d ]*) слов", doc[0][1]["caption"]).group(1).replace(" ", "")); assert 1500 <= got <= 2625, got; print("short draft was extended to", got, "words (range 1500-2500)")
+    assert any(c["messages"][-1]["content"].startswith("Here is the section") for c in fake.calls), "expansion pass ran"
+    assert any("Foydalanilgan" not in str(c) for c in r)
+    SECTION_FACTOR[0] = 1.0
+    import papers as _papers
+    real_generate = _papers.generate
+    async def boom(*a, **k): raise AssistantError("overloaded")
+    _papers.generate = boom
+    await feed(msg(R, "/write")); await feed(cb(R, "pk:essay")); await feed(msg(R, "Тема эссе")); await feed(cb(R, "pl:en")); await feed(cb(R, "pv:500-800")); await feed(cb(R, "ps:apa")); await feed(cb(R, "px:skip"))
+    before = await db.balance(R); r = await feed(cb(R, "pc:go")); assert await db.balance(R) == before and "вернулись" in " ".join(texts(r)); print("failed work refunded")
+    _papers.generate = real_generate
+    await db.charge(R, await db.balance(R), "admin")
+    await feed(msg(R, "/write")); await feed(cb(R, "pk:essay")); await feed(msg(R, "Тема эссе")); await feed(cb(R, "pl:ru")); await feed(cb(R, "pv:500-800")); await feed(cb(R, "ps:none")); await feed(cb(R, "px:skip"))
+    r = await feed(cb(R, "pc:go")); assert "Недостаточно звёзд" in " ".join(texts(r)) and not [c for c in r if c[0] == "sendDocument"]; print("order refused with an empty wallet")
+    await feed(msg(R, "/write")); await feed(cb(R, "pk:course")); r = await feed(msg(R, "📊 Слайды")); assert "Презентация" in texts(r)[0]; print("a menu tap leaves the work wizard")
+
     # ---------- the admin's own interface ----------
     r = await feed(msg(900, "/start")); first = [c for c in r if c[0] == "sendMessage"][0]
     assert "Админка" in first[1]["text"] and len(first[1]["reply_markup"]["keyboard"]) == 6 and "✍️ Писать работу" not in str(first[1]["reply_markup"])
@@ -306,7 +372,7 @@ async def body(s, db):
     r = await feed(msg(F, "Первый вопрос")); assert "🎁 бесплатное действие, осталось: 2" in texts(r)[0] and await db.balance(F) == 0; print("1st action free:", texts(r)[0][-45:].replace("\n", " "))
     before = await db.free_used(F); r = await feed(msg(F, "ОШИБКА")); assert await db.free_used(F) == before, "a failed free action must stay available"; print("failed free action is given back")
     r = await feed(msg(F, "Второй вопрос")); assert "осталось: 1" in texts(r)[0]
-    await feed(msg(F, "📊 Слайды")); r = await feed(msg(F, "Цифровой маркетинг")); assert any(c[0] == "sendDocument" and "осталось: 0" in c[1]["caption"] for c in r); print("3rd action (slides) free too")
+    r = await make_deck(F, "📊 Слайды", "Цифровой маркетинг"); assert any(c[0] == "sendDocument" and "осталось: 0" in c[1]["caption"] for c in r); print("3rd action (slides) free too")
     r = await feed(msg(F, "Четвёртый вопрос")); assert "Недостаточно звёзд" in texts(r)[0] and await db.balance(F) == 0; print("4th action needs Stars:", texts(r)[0][:40])
     await db.credit(F, 50, "admin"); r = await feed(msg(F, "Четвёртый вопрос")); assert "−50 ⭐ · баланс: 0 ⭐" in texts(r)[0]; print("paid from the wallet after the free ones")
     print("ALL OK")

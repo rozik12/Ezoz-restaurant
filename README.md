@@ -29,6 +29,19 @@ python tests/smoke.py    # end-to-end check on fake Telegram and fake Claude
   `/admin` opens the panel: statistics (users, new, active, subscribers, requests, languages, tickets), user list and cards,
   subscription grant/revoke, ban/unban, refunds, tickets, broadcast, admin list. Only owners use `/addadmin` and `/rmadmin`.
 
+## Ordering a work or a presentation
+
+Everything is driven by buttons; only the topic has to be typed.
+
+* **✍️ Written works** (`/write`): term paper, referat, essay, report, internship report, thesis chapter. The wizard asks for the topic, the language,
+  the **length** (preset ranges per type or your own: `7000-9000 words`, `25 pages`, `3000`; 1 page ≈ 250 words), the standard (GOST, APA, none) and optional requirements
+  or a pasted plan or a methodical file. Then the bot plans the work, writes the sections in parallel to the target size, extends it if it came out shorter than the required minimum,
+  adds a short bibliography of well-known real works only, and sends a `.docx` in the usual university layout (margins 30/10/20/20 mm, Times New Roman 14, 1.5 spacing, page numbers,
+  title page with blanks to fill in, contents). Facts that need the student's own data are left as `[bracketed placeholders]`. The price is `PRICE_PAPER`; a failure is refunded.
+* **📊 Slides** (`/slides`): topic or file, then slide count (buttons or any number from 3 to 30; skipped when the message already says "12 slides"), purpose (defense, class talk,
+  business, school) and style. The deck comes with speaker notes; the style can be changed afterwards for free.
+* **📂 My works** (`/works`): every finished file can be downloaded again.
+
 ## Wallet
 
 Every action is paid from the wallet in Telegram Stars; there are no subscriptions and no daily limits. Optionally every user can get `FREE_ACTIONS`
