@@ -64,5 +64,6 @@ def theme_buttons(lang: str, current: str) -> InlineKeyboardMarkup:
                                                   for n in THEME_ORDER if n != current]])
 
 
-def subscribe_button(label: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=label, callback_data="pay")]])
+def subscribe_button(label: str, lang: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=label, callback_data="pay")],
+                                                 [InlineKeyboardButton(text=t(lang, "stars_btn"), callback_data="stars:how")]])

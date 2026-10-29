@@ -135,7 +135,7 @@ async def status_text(db: Database, s: Settings, user_id: int, lang: str) -> str
 @router.message(F.text.in_(kb.BTN_SUB))
 async def subscribe(message: Message, db: Database, settings: Settings, lang: str) -> None:
     await message.answer(await status_text(db, settings, message.from_user.id, lang),
-                         reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars)))
+                         reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang))
 
 
 async def send_invoice(target: Message, settings: Settings, user_id: int, lang: str) -> None:
@@ -145,6 +145,18 @@ async def send_invoice(target: Message, settings: Settings, user_id: int, lang: 
         payload=f"sub:{user_id}", currency="XTR",
         prices=[LabeledPrice(label=t(lang, "invoice_label", days=settings.sub_days), amount=settings.price_stars)],
         provider_token="")
+
+
+@router.message(Command("stars"))
+async def stars_howto(message: Message, settings: Settings, lang: str) -> None:
+    await message.answer(t(lang, "stars_howto", price=settings.price_stars, days=settings.sub_days))
+
+
+@router.callback_query(F.data == "stars:how")
+async def stars_howto_btn(call: CallbackQuery, settings: Settings, lang: str) -> None:
+    await call.answer()
+    await call.message.answer(t(lang, "stars_howto", price=settings.price_stars, days=settings.sub_days),
+                              reply_markup=kb.subscribe_button(t(lang, "pay_btn", price=settings.price_stars), lang))
 
 
 @router.callback_query(F.data == "pay")
@@ -189,7 +201,7 @@ async def run_assistant(message: Message, db: Database, ai: Assistant, settings:
             await message.answer(t(lang, "limit_paid", n=limit))
         else:
             await message.answer(t(lang, "limit_free", n=limit, price=settings.price_stars, paid=settings.paid_daily),
-                                 reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars)))
+                                 reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang))
         return
     lock = _lock(uid)
     if lock.locked():
@@ -215,7 +227,7 @@ async def run_assistant(message: Message, db: Database, ai: Assistant, settings:
             left = max(0, limit - await db.used_today(uid))
             if left == 0:
                 await message.answer(t(lang, "last_free"),
-                                     reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars)))
+                                     reply_markup=kb.subscribe_button(t(lang, "pay_btn_sub", price=settings.price_stars), lang))
 
 
 @router.message(F.document)

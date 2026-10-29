@@ -31,6 +31,53 @@ TOOLS: dict[str, tuple[str, str, str]] = {
                        "Another style of the same deck (no new generation):"),
     "slides_old": ("Эта презентация уже недоступна для смены стиля: создайте новую.", "Bu taqdimot uslubini o'zgartirib bo'lmaydi: yangisini yarating.",
                    "This deck can no longer be restyled: create a new one."),
+    "stars_btn": ("ℹ️ Как купить Stars", "ℹ️ Stars qanday sotib olinadi", "ℹ️ How to buy Stars"),
+    "stars_howto": (
+        "⭐ <b>Как купить Telegram Stars</b>\n\n"
+        "<b>Способ 1. Прямо при оплате</b>\n"
+        "1. Нажмите «⭐ Оплатить» под подпиской.\n"
+        "2. В окне счёта нажмите «Оплатить». Если Stars не хватает, Telegram сам предложит докупить нужное количество.\n"
+        "3. Выберите способ оплаты (банковская карта, Apple Pay или Google Pay), подтвердите платёж. Stars сразу спишутся, и подписка включится.\n\n"
+        "<b>Способ 2. Заранее через настройки</b>\n"
+        "1. Откройте Telegram → <b>Настройки</b> → <b>Мои звёзды</b> (My Stars).\n"
+        "2. Нажмите <b>Купить звёзды</b> / «Пополнить» и выберите пакет.\n"
+        "3. Оплатите, и звёзды появятся на балансе. Потом вернитесь в бот и нажмите «💎 Подписка».\n\n"
+        "<b>Способ 3. Через бота @PremiumBot</b>: откройте его, нажмите Start и выберите «Купить звёзды».\n\n"
+        "💡 <b>Полезно знать</b>\n"
+        "• Если карта не проходит, попробуйте другую карту, Apple Pay или Google Pay.\n"
+        "• Цена звёзд может отличаться в зависимости от платформы: на iPhone через App Store обычно дороже, чем через карту на сайте или в Android.\n"
+        "• Stars можно получить в подарок от друга: пусть отправит их вам из своего баланса.\n"
+        "• Подписка стоит {price} ⭐ на {days} дней. Если оплата прошла, а подписка не включилась, нажмите «🆘 Поддержка».",
+        "⭐ <b>Telegram Stars qanday sotib olinadi</b>\n\n"
+        "<b>1-usul. To'lov paytida</b>\n"
+        "1. Obuna ostidagi «⭐ To'lash» tugmasini bosing.\n"
+        "2. Hisob oynasida «To'lash» ni bosing. Stars yetmasa, Telegram yetishmayotgan miqdorni o'zi sotib olishni taklif qiladi.\n"
+        "3. To'lov usulini tanlang (bank kartasi, Apple Pay yoki Google Pay) va tasdiqlang. Stars darhol yechiladi va obuna yoqiladi.\n\n"
+        "<b>2-usul. Oldindan sozlamalar orqali</b>\n"
+        "1. Telegram → <b>Sozlamalar</b> → <b>Mening yulduzlarim</b> (My Stars) bo'limini oching.\n"
+        "2. <b>Yulduz sotib olish</b> / «To'ldirish» ni bosing va paketni tanlang.\n"
+        "3. To'lang, yulduzlar balansingizda paydo bo'ladi. Keyin botga qayting va «💎 Obuna» ni bosing.\n\n"
+        "<b>3-usul. @PremiumBot orqali</b>: uni oching, Start ni bosing va «Yulduz sotib olish» ni tanlang.\n\n"
+        "💡 <b>Bilib qo'ying</b>\n"
+        "• Karta o'tmasa, boshqa karta, Apple Pay yoki Google Pay ni sinab ko'ring.\n"
+        "• Yulduzlar narxi platformaga qarab farq qilishi mumkin: iPhone da App Store orqali odatda qimmatroq.\n"
+        "• Yulduzlarni do'stingizdan sovg'a sifatida olish mumkin: ular o'z balansidan sizga yuborsin.\n"
+        "• Obuna {days} kunga {price} ⭐ turadi. To'lov o'tgan, lekin obuna yoqilmagan bo'lsa, «🆘 Yordam xizmati» ni bosing.",
+        "⭐ <b>How to buy Telegram Stars</b>\n\n"
+        "<b>Way 1. Right at checkout</b>\n"
+        "1. Tap «⭐ Pay» under the subscription.\n"
+        "2. In the invoice window tap «Pay». If you don't have enough Stars, Telegram offers to buy the missing amount.\n"
+        "3. Choose a payment method (bank card, Apple Pay or Google Pay) and confirm. The Stars are charged at once and the subscription turns on.\n\n"
+        "<b>Way 2. In advance via Settings</b>\n"
+        "1. Open Telegram → <b>Settings</b> → <b>My Stars</b>.\n"
+        "2. Tap <b>Buy Stars</b> / «Top up» and choose a package.\n"
+        "3. Pay, and the stars appear on your balance. Then return to the bot and tap «💎 Subscription».\n\n"
+        "<b>Way 3. Via @PremiumBot</b>: open it, tap Start and choose «Buy Stars».\n\n"
+        "💡 <b>Good to know</b>\n"
+        "• If your card is declined, try another card, Apple Pay or Google Pay.\n"
+        "• The price of Stars can differ by platform: on iPhone through the App Store it is usually higher.\n"
+        "• You can get Stars as a gift from a friend: they send them from their own balance.\n"
+        "• The subscription costs {price} ⭐ for {days} days. If a payment went through but the subscription did not activate, tap «🆘 Support»."),
     # ---- AI check ----
     "detect_intro": (
         "🕵️ <b>Проверка на ИИ</b>\n\nПришлите текст (от {n} знаков) или файл .txt, .pdf, .docx. Я оценю, насколько он похож на машинный, "

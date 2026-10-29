@@ -32,6 +32,7 @@ async def setup_profile(bot: Bot) -> None:
         await bot.set_my_commands([BotCommand(command="start", description="Главное меню"),
                                    BotCommand(command="new", description="Новый диалог"),
                                    BotCommand(command="subscribe", description="Подписка за Stars"),
+                                   BotCommand(command="stars", description="Как купить Stars / Stars sotib olish / Buy Stars"),
                                    BotCommand(command="slides", description="Слайды / Slaydlar / Slides"),
                                    BotCommand(command="convert", description="Конвертер / Konvertor / Converter"),
                                    BotCommand(command="detect", description="Проверка на ИИ / AI check"),

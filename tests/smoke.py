@@ -134,6 +134,8 @@ async def body(s, db):
     await feed(msg(W, "/start")); r = await feed(cb(W, "lang:en")); assert any("Hi! I'm OmniStudent" in x for x in texts(r)); print("en welcome ok")
     r = await feed(msg(W, "🧮 Problems & code")); assert "Technical expert" in texts(r)[0]; print("en mode button ok")
     r = await feed(msg(V, "/subscribe")); assert "Bepul tarif" in texts(r)[0]; print("uz subscription text ok")
+    r = await feed(cb(V, "stars:how")); howto = texts(r)[0]; assert "Mening yulduzlarim" in howto and "300 ⭐" in howto; print("stars how-to (uz) ok")
+    r = await feed(msg(W, "/stars")); assert "My Stars" in texts(r)[0] and "@PremiumBot" in texts(r)[0]; print("/stars (en) ok")
     r = await feed(msg(V, "🌐 Til")); assert "inline_keyboard" in r[0][1]["reply_markup"]; print("language button ok")
 
     # ---------- support desk ----------

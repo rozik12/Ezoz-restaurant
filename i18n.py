@@ -45,13 +45,13 @@ S: dict[str, tuple[str, str, str]] = {
     ),
     "help": (
         "<b>Команды</b>\n/start главное меню\n/new новый диалог (забыть контекст)\n/subscribe подписка за Telegram Stars\n"
-        "/support написать в поддержку\n/lang сменить язык\n/paysupport вопросы по оплате\n/id ваш Telegram ID\n\n"
+        "/stars как купить Stars\n/support написать в поддержку\n/lang сменить язык\n/paysupport вопросы по оплате\n/id ваш Telegram ID\n\n"
         "Совет: чем точнее задача (тема, объём, стандарт оформления, дедлайн), тем лучше результат.",
         "<b>Buyruqlar</b>\n/start asosiy menyu\n/new yangi suhbat (kontekstni unutish)\n/subscribe Telegram Stars orqali obuna\n"
-        "/support yordam xizmatiga yozish\n/lang tilni almashtirish\n/paysupport to'lov bo'yicha savollar\n/id sizning Telegram ID\n\n"
+        "/stars Stars qanday sotib olinadi\n/support yordam xizmatiga yozish\n/lang tilni almashtirish\n/paysupport to'lov bo'yicha savollar\n/id sizning Telegram ID\n\n"
         "Maslahat: topshiriq qanchalik aniq bo'lsa (mavzu, hajm, rasmiylashtirish standarti, muddat), natija shunchalik yaxshi.",
         "<b>Commands</b>\n/start main menu\n/new new chat (forget the context)\n/subscribe subscription via Telegram Stars\n"
-        "/support contact support\n/lang change language\n/paysupport payment questions\n/id your Telegram ID\n\n"
+        "/stars how to buy Stars\n/support contact support\n/lang change language\n/paysupport payment questions\n/id your Telegram ID\n\n"
         "Tip: the more precise the task (topic, length, formatting standard, deadline), the better the result.",
     ),
     "your_id": ("Ваш Telegram ID: <code>{id}</code>", "Sizning Telegram ID: <code>{id}</code>", "Your Telegram ID: <code>{id}</code>"),
